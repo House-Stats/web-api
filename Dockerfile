@@ -7,6 +7,6 @@ COPY ./requirements.txt ./
 
 
 RUN python3 -m pip install --upgrade pip setuptools wheel
-RUN python3 -m pip install psycopg2 pymongo confluent_kafka flask gunicorn flask-cors
+RUN python3 -m pip install -r requirements.txt
 
 CMD ["gunicorn", "-w 4", "-b 0.0.0.0:8000", "run:app"]
