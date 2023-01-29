@@ -9,5 +9,5 @@ class Config:
     SQL_HOST = os.environ.get("POSTGRES_HOST")
     KAFKA = os.environ.get("KAFKA")
     MONGO_HOST =os.environ.get("MONGO_HOST")
-    MONGO_USER = os.environ.get("MONGO_USER")
+    MONGO_USER = os.environ.get("MONGO_USERNAME")
     MONGO_PASSWORD = os.environ.get("MONGO_PASSWORD")
