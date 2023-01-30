@@ -13,7 +13,6 @@ def index(area_type, area):
     with current_app.app_context():
         while True:
             try:
-                print("Sending query")
                 current_app.kafka_producer.produce("query_queue", data)  # Send each sale as string to kafka
                 current_app.kafka_producer.poll(0)
                 break
@@ -60,7 +59,6 @@ def search_area(query):
                         LIKE '{query}%' AND area_type = '{query_filter}'
                         ORDER BY char_length(area)
                         LIMIT 10;"""
-            print(sql_query)
         else:
             return abort(404)
     else:
