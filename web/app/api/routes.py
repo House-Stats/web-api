@@ -79,7 +79,7 @@ def search_area(query):
                 return_list.append((area[0].title(), area[1].title()))
             else:
                 return_list.append((area[0], area[1].title()))
-        return_list.sort(key=lambda val: SORT_ORDER[val[1].lower()], reverse=True)
+        return_list.sort(key=lambda val: SORT_ORDER[val[1].lower()])
         return jsonify(
             results=return_list,
             found=True
