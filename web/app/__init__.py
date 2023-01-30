@@ -4,13 +4,22 @@ from confluent_kafka import Producer
 from flask import Flask, current_app
 from pymongo import MongoClient
 from flask_cors import CORS
-
+import sentry_sdk
 
 
 def create_app(config_class=Config) -> Flask:
     app = Flask(__name__)
     app.config.from_object(config_class)
     cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+    sentry_sdk.init(
+        dsn="https://0cde96349a0145e485630af0f46c0f45@sentry.housestats.co.uk/4",
+
+        # Set traces_sample_rate to 1.0 to capture 100%
+        # of transactions for performance monitoring.
+        # We recommend adjusting this value in production.
+        traces_sample_rate=1.0
+    )
 
  
     kafka_producer = Producer({"bootstrap.servers": app.config["KAFKA"]})
