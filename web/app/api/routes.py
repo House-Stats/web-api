@@ -74,7 +74,7 @@ def search_area(query):
         cur.execute(sql_query)
         results: List[Tuple[str,str]] = cur.fetchall()
     if len(results) > 0:
-        SORT_ORDER = {"area": 1, "outcode": 0, "sector": 2, "postcode": 3, "town": 4, "county": 5, "district": 6, "street": 7}
+        SORT_ORDER = {"area": 0, "outcode": 1, "sector": 2, "postcode": 3, "town": 4, "county": 5, "district": 6, "street": 7}
         return_list = []
         for area in results:
             if area[1] not in ["postcode","outcode","sector","area"]:
