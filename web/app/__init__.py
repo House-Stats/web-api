@@ -5,6 +5,7 @@ from flask import Flask, current_app
 from pymongo import MongoClient
 from flask_cors import CORS
 import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
 
 
 def create_app(config_class=Config) -> Flask:
@@ -14,7 +15,9 @@ def create_app(config_class=Config) -> Flask:
 
     sentry_sdk.init(
         dsn="https://0cde96349a0145e485630af0f46c0f45@sentry.housestats.co.uk/4",
-
+        integrations=[
+            FlaskIntegration(),
+        ],
         # Set traces_sample_rate to 1.0 to capture 100%
         # of transactions for performance monitoring.
         # We recommend adjusting this value in production.
