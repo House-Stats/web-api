@@ -5,48 +5,56 @@ from typing import List, Tuple
 
 from app.api import bp
 from flask import current_app, jsonify, url_for, abort, request
-
+from app.celery import analyse_task
 
 @bp.route("/analyse/<string:area_type>/<string:area>")
 def index(area_type, area):
-    data = dumps((area.upper(), area_type.upper()))
     with current_app.app_context():
-        while True:
-            try:
-                current_app.kafka_producer.produce("query_queue", data)  # Send each sale as string to kafka
-                current_app.kafka_producer.poll(0)
-                break
-            except BufferError:
-                current_app.kafka_producer.flush()
-    query_id = (area + area_type).replace(" ", "").upper()
-    return jsonify(
-        status="ok",
-        query_id=query_id,
-        result=f"https://api.housestats.co.uk{url_for('api.fetch_results',query_id=query_id)}"
-    )
+        query_id = area.upper() + area_type.upper()
+        result = current_app.mongo_db.cache.find_one({"_id": query_id})
+    if result is None:
+        task = analyse_task.delay(area, area_type)
+        return jsonify(
+            status="ok",
+            task_id=task.id,
+            result=f"https://api.housestats.co.uk{url_for('api.fetch_results',query_id=query_id)}?task_id={task.id}"
+        )
+    else:
+        return jsonify(
+            status="ok",
+            result=f"https://api.housestats.co.uk{url_for('api.fetch_results',query_id=query_id)}"
+        )
 
-@bp.route("/fetch/<string:query_id>")
+@bp.route("/get/<string:query_id>")
 def fetch_results(query_id):
-    with current_app.app_context():
-        query = current_app.mongo_db.cache.find_one({"_id": query_id.upper()})
-        if query is not None:
-            if query["last_updated"] > get_last_updated():
-                return jsonify(
-                    results=query,
-                    outdated=False,
-                    done=True
-                    )
-            else:
-                return jsonify(
-                    results=query,
-                    outdated=True,
-                    done=True
-                )
+    task_id = request.args.get("task_id", None)
+    if task_id is not None:
+        task = analyse_task.AsyncResult(task_id)
+        if task.state == "PENDING":
+            return {
+                "status": task.state
+            }
         else:
-            return jsonify(
-                outdated=False,
-                done=False
-            )
+            query_id = task.wait()
+            with current_app.app_context():
+                result = current_app.mongo_db.cache.find_one({"_id": query_id})
+            return {
+                "status": task.state,
+                "result": result
+            }
+    else:
+        with current_app.app_context():
+            result = current_app.mongo_db.cache.find_one({"_id": query_id})
+        if result is not None:
+            return {
+                "status": "COMPLETED",
+                "result": result
+            }
+        else:
+            return {
+                "status": "FAILED"
+            }
+
 
 @bp.route("/search/<string:query>")
 def search_area(query):
@@ -127,21 +135,32 @@ def get_house(postcode, paon):
 
 @bp.route("/find/<string:postcode>/<string:paon>/<string:saon>")
 def get_house_saon(postcode, paon, saon):
-    sql_query = """SELECT h.type, h.paon, h.saon, h.postcode, p.street, p.town, s.tui, s.date, s.price, s.new, s.freehold, s.ppd_cat
+    sql_house_query = """SELECT h.houseid, h.type, h.paon, h.saon, h.postcode, p.street, p.town
                     FROM postcodes AS p
-                    INNER JOIN houses AS h ON p.postcode = h.postcode AND p.postcode = %s AND h.paon = %s AND h.saon = %s
-                    INNER JOIN sales AS s ON h.houseid = s.houseid
+                    INNER JOIN houses AS h ON p.postcode = h.postcode AND p.postcode = %s 
+                    WHERE h.paon = %s AND h.saon = %s
                     ORDER BY s.date DESC;"""
+    sql_sales_query = """SELECT *
+                    FROM sales
+                    WHERE houseid = %s;"""
     with current_app.app_context():
         cur = current_app.sql_db.cursor()
-        cur.execute(sql_query, (postcode.upper(),paon.upper(),saon.upper(),))
-        results: List[Tuple] = cur.fetchall()
-    if results != []:
-        return jsonify(
-            results=results,
-        )
-    else:
-        return abort(404, "No House Found")
+        cur.execute(sql_house_query, (postcode.upper(),paon.upper(),saon.upper(),)) # Gets house 
+        house: List[Tuple] = cur.fetchall()
+        if house != []:
+            cur.execute(sql_sales_query, (house[0])) # gets all sales for the house
+            sales = cur.fetchall()
+            house_info = {
+                "paon": house[1],
+                "saon": house[2],
+                "postcode": house[3],
+                "street": house[4],
+                "town": house[5],
+                "sales": sales
+            }
+            return jsonify(house_info)
+        else:
+            return abort(404, "No House Found")
 
 def get_last_updated():
     cur = current_app.sql_db.cursor()
