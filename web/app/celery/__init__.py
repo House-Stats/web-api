@@ -6,8 +6,8 @@ from app.celery.analyse import Analyse
 # Initialize Celery
 celery = Celery(
     'worker', 
-    broker= os.environ.get("CELERY_BROKER_URL", "pyamqp://User:pass@localhost:5672"),
-    backend=os.environ.get("CELERY_RESULT_BACKEND", "redis://localhost")
+    broker= os.environ.get("CELERY_BROKER_URL"),
+    backend=os.environ.get("CELERY_RESULT_BACKEND")
 )
 
 @celery.task()
