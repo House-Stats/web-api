@@ -199,14 +199,15 @@ class Analyse(celery.Task):
 
         current_month = data["average_price"]["dates"][-1]
         current_average = data["average_price"]["prices"][4][-1]
-        average_change = round(data["percentage_change"]["all"]["perc_change"][-1], 2)
+        prev_average = data["average_price"]["prices"][4][-2]
+        average_change = round(100*(current_average-prev_average)/prev_average, 2)
 
         current_qty = data["monthly_qty"]["qty"][4][-1]
-        prev_qty = data["monthly_qty"]["qty"][4][-13]
+        prev_qty = data["monthly_qty"]["qty"][4][-2]
         qty_change = round(100*(current_qty-prev_qty)/prev_qty,2)
 
         current_vol =  data["monthly_volume"]["volume"][4][-1]
-        prev_vol = data["monthly_volume"]["volume"][4][-13]
+        prev_vol = data["monthly_volume"]["volume"][4][-2]
         vol_change = round(100*(current_vol-prev_vol)/prev_vol,2)
 
         expensive_sale = (self._data
