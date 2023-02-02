@@ -61,7 +61,16 @@ class Loader():
         if latest_date is not None:
             latest_date = datetime.combine(latest_date[0], datetime.min.time())
             if latest_date > (datetime.now() - timedelta(days=60)):
-                start = datetime.now().replace(day=1)
+                start = datetime.now().replace(day=1).replace(hour=0,minute=0,second=0, microsecond=0)
                 return start - relativedelta(months=2)
             else:
                 return latest_date[0]
+
+if __name__ == "__main__":
+    from config import Config
+    import psycopg2
+
+    config = Config()
+    conn = psycopg2.connect(f"postgresql://{config.SQL_USER}:{config.SQL_PASSWORD}@{config.SQL_HOST}:5432/house_data")
+    lodr = Loader("CH2", "outcode", conn.cursor())
+    print(lodr.latest_date)
