@@ -128,16 +128,17 @@ def get_house(postcode, paon):
     with current_app.app_context():
         cur = current_app.sql_db.cursor()
         cur.execute(sql_house_query, (postcode.upper(),paon.upper(),)) # Gets house 
-        house: List[Tuple] = cur.fetchall()
+        house: List[Tuple] = cur.fetchone()
         if house != []:
-            cur.execute(sql_sales_query, (house[0])) # gets all sales for the house
+            cur.execute(sql_sales_query, (house[0],)) # gets all sales for the house
             sales = cur.fetchall()
             house_info = {
-                "paon": house[1],
-                "saon": house[2],
-                "postcode": house[3],
-                "street": house[4],
-                "town": house[5],
+                "paon": house[2],
+                "saon": house[3],
+                "postcode": house[4],
+                "street": house[5],
+                "town": house[6],
+                "type": house[1],
                 "sales": sales
             }
             return jsonify(house_info)
@@ -157,16 +158,17 @@ def get_house_saon(postcode, paon, saon):
     with current_app.app_context():
         cur = current_app.sql_db.cursor()
         cur.execute(sql_house_query, (postcode.upper(),paon.upper(),saon.upper(),)) # Gets house 
-        house: List[Tuple] = cur.fetchall()
+        house: List[Tuple] = cur.fetchone()
         if house != []:
-            cur.execute(sql_sales_query, (house[0])) # gets all sales for the house
+            cur.execute(sql_sales_query, (house[0],)) # gets all sales for the house
             sales = cur.fetchall()
             house_info = {
-                "paon": house[1],
-                "saon": house[2],
-                "postcode": house[3],
-                "street": house[4],
-                "town": house[5],
+                "paon": house[2],
+                "saon": house[3],
+                "postcode": house[4],
+                "street": house[5],
+                "town": house[6],
+                "type": house[1],
                 "sales": sales
             }
             return jsonify(house_info)
