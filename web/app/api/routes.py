@@ -117,32 +117,43 @@ def search_houses(postcode):
 
 @bp.route("/find/<string:postcode>/<string:paon>")
 def get_house(postcode, paon):
-    sql_query = """SELECT h.type, h.paon, h.saon, h.postcode, p.street, p.town, s.tui, s.date, s.price, s.new, s.freehold, s.ppd_cat
+    sql_house_query = """SELECT h.houseid, h.type, h.paon, h.saon, h.postcode, p.street, p.town
                     FROM postcodes AS p
-                    INNER JOIN houses AS h ON p.postcode = h.postcode AND p.postcode = %s AND h.paon = %s
-                    INNER JOIN sales AS s ON h.houseid = s.houseid
-                    ORDER BY s.date DESC;"""
+                    INNER JOIN houses AS h ON p.postcode = h.postcode AND p.postcode = %s 
+                    WHERE h.paon = %s"""
+    sql_sales_query = """SELECT *
+                    FROM sales
+                    WHERE houseid = %s
+                    ORDER BY date DESC;"""
     with current_app.app_context():
         cur = current_app.sql_db.cursor()
-        cur.execute(sql_query, (postcode.upper(),paon.upper()))
-        results: List[Tuple] = cur.fetchall()
-    if results != []:
-        return jsonify(
-            results=results,
-        )
-    else:
-        return abort(404, "No House Found")
+        cur.execute(sql_house_query, (postcode.upper(),paon.upper(),)) # Gets house 
+        house: List[Tuple] = cur.fetchall()
+        if house != []:
+            cur.execute(sql_sales_query, (house[0])) # gets all sales for the house
+            sales = cur.fetchall()
+            house_info = {
+                "paon": house[1],
+                "saon": house[2],
+                "postcode": house[3],
+                "street": house[4],
+                "town": house[5],
+                "sales": sales
+            }
+            return jsonify(house_info)
+        else:
+            return abort(404, "No House Found")
 
 @bp.route("/find/<string:postcode>/<string:paon>/<string:saon>")
 def get_house_saon(postcode, paon, saon):
     sql_house_query = """SELECT h.houseid, h.type, h.paon, h.saon, h.postcode, p.street, p.town
                     FROM postcodes AS p
                     INNER JOIN houses AS h ON p.postcode = h.postcode AND p.postcode = %s 
-                    WHERE h.paon = %s AND h.saon = %s
-                    ORDER BY s.date DESC;"""
+                    WHERE h.paon = %s AND h.saon = %s;"""
     sql_sales_query = """SELECT *
                     FROM sales
-                    WHERE houseid = %s;"""
+                    WHERE houseid = %s
+                    ORDER BY date DESC;"""
     with current_app.app_context():
         cur = current_app.sql_db.cursor()
         cur.execute(sql_house_query, (postcode.upper(),paon.upper(),saon.upper(),)) # Gets house 
