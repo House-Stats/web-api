@@ -1,0 +1,73 @@
+version: "3.9" 
+
+services:
+  web_api:
+    build: .
+    restart: "always"
+    environment:
+      DBNAME: "house_data"
+      POSTGRES_USER:
+      POSTGRES_PASSWORD:
+      POSTGRES_HOST:
+      MONGO_HOST:
+      MONGO_USERNAME:
+      MONGO_PASSWORD:
+      CELERY_BROKER_URL:
+      CELERY_RESULT_BACKEND:
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "9000:8000"
+    networks:
+      - net
+    depends_on:
+      - worker
+
+  worker:
+    build: .
+    entrypoint: celery
+    command: "--app=app.celery worker --loglevel=info --concurrency=4"
+    restart: "always"
+    environment:
+      DBNAME: "house_data"
+      POSTGRES_USER:
+      POSTGRES_PASSWORD:
+      POSTGRES_HOST:
+      MONGO_HOST:
+      MONGO_USERNAME:
+      MONGO_PASSWORD:
+      CELERY_BROKER_URL:
+      CELERY_RESULT_BACKEND:
+      PYTHONUNBUFFERED: "1"
+    networks:
+      - net
+    depends_on:
+      - rabbit_mq
+      - redis
+
+  rabbit_mq:
+    image: rabbitmq:3-management
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    environment:
+      RABBITMQ_DEFAULT_USER:
+      RABBITMQ_DEFAULT_PASS:
+    networks:
+      - net
+
+  redis:
+    image: redis:latest
+    ports:
+      - '6379:6379'
+    command: redis-server --save 300 1
+    volumes: 
+      - cache:/data
+    networks:
+      - net
+
+volumes:
+  pgadmin-data:
+  cache:
+
+networks:
+  net:
