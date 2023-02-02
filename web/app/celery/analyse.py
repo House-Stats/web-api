@@ -28,7 +28,10 @@ class Analyse(celery.Task):
         self.timer = Timer()
 
         self.timer.start("loader")
-        loader = Loader(area, area_type, self._cur)
+        try:
+            loader = Loader(area, area_type, self._cur)
+        except ValueError as e:
+            return e
         self.timer.end("loader")
 
         self._data = loader.get_data()
@@ -48,6 +51,10 @@ class Analyse(celery.Task):
             "stats": self._stats
         }
         self._cache_results(return_data)
+
+    @property
+    def stats(self):
+        return self._stats
 
     def _cache_results(self, return_data: Dict) -> None:
         area_record = self._mongo.cache.find_one({
@@ -103,14 +110,14 @@ class Analyse(celery.Task):
         df = self._data.partition_by("type", as_dict=True)
         monthly_quantity = {}
         for house_type in df:
-            volume = self._calc_monthly_vol(df[house_type])
+            volume = self._calc_monthly_qty(df[house_type])
             monthly_quantity[house_type] = volume.to_dict(as_series=False)
 
-        monthly_quantity["all"] = self._calc_monthly_vol(self._data).to_dict(as_series=False)
+        monthly_quantity["all"] = self._calc_monthly_qty(self._data).to_dict(as_series=False)
 
         data = {
             "type": [key for key in sorted(monthly_quantity)],
-            "volume": [monthly_quantity[key]["volume"] for key in sorted(monthly_quantity)],
+            "qty": [monthly_quantity[key]["qty"] for key in sorted(monthly_quantity)],
             "dates": monthly_quantity["all"]["date"]
         }
         self.timer.end("aggregate_qty")
@@ -120,7 +127,7 @@ class Analyse(celery.Task):
         volume = df \
             .sort("date") \
             .groupby_dynamic("date", every="1mo") \
-            .agg(pl.col("price").count().alias("volume"))
+            .agg(pl.col("price").count().alias("qty"))
         return volume
 
     def _get_monthly_volumes(self) -> Dict:
@@ -192,10 +199,10 @@ class Analyse(celery.Task):
 
         current_month = data["average_price"]["dates"][-1]
         current_average = data["average_price"]["prices"][4][-1]
-        average_change = data["percentage_change"]["all"]["perc_change"][-1]
+        average_change = round(data["percentage_change"]["all"]["perc_change"][-1], 2)
 
-        current_qty = data["monthly_qty"]["volume"][4][-1]
-        prev_qty = data["monthly_qty"]["volume"][4][-13]
+        current_qty = data["monthly_qty"]["qty"][4][-1]
+        prev_qty = data["monthly_qty"]["qty"][4][-13]
         qty_change = round(100*(current_qty-prev_qty)/prev_qty,2)
 
         current_vol =  data["monthly_volume"]["volume"][4][-1]
@@ -227,6 +234,7 @@ class Analyse(celery.Task):
             "monthly_volume": self._get_monthly_volumes(),
             "percentage_change": self._get_percs()
         }
+
         data["quick_stats"] = self._quick_stats(data)
         return data
 
@@ -235,3 +243,4 @@ if __name__ == "__main__":
     task = Analyse()
     task.before_start("efnqiwfn")
     task.run("CH2 1", "sector")
+    
