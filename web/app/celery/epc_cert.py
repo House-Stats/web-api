@@ -52,7 +52,14 @@ class GetEPC():
             house_id = f"{saon} {paon}".upper()
         else:
             house_id = paon.upper()
-        house = list(filter(lambda x: x[0] == house_id,houses))[0]
+        try:
+            house = list(filter(lambda x: x[0] == house_id,houses))[0]
+        except IndexError:
+            return {
+                "sqr_m": None,
+                "energy_rating": None,
+                "cert_id":  None
+            }
         cert_stats = self.get_cert(house[1])
         self._insert_data(cert_stats, house[1], postcode, paon, saon)
         return {
@@ -85,4 +92,4 @@ class GetEPC():
 
 if __name__ == "__main__":
     cert = GetEPC()
-    cert.run("CH64 1RG", "MEADOW VIEW", saon = "1")
+    cert.run("CH2 1DE", "16", "")
