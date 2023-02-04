@@ -1,3 +1,4 @@
+import time
 import urllib.parse
 from datetime import datetime
 from typing import List, Tuple
@@ -171,56 +172,11 @@ def get_house_saon(postcode, paon, saon):
                 "type": house[1],
                 "sales": sales
             }
+            task = get_epc.delay(postcode, paon, saon)
+            house_info["epc_cert"] = task.wait()
             return jsonify(house_info)
         else:
             return abort(404, "No House Found")
-
-@bp.route("/epc_cert")
-def fetch_epc():
-    postcode = request.args.get("postcode", None)
-    paon = request.args.get("paon", None)
-    saon = request.args.get("saon", "")
-    house_id = (paon + saon + postcode).upper()
-    if postcode is None or paon is None:
-        return "Invalid postcode or paon", 400
-    else:
-
-        task = get_epc.delay(postcode, paon, saon)
-        return jsonify(
-            status="ok",
-            task_id=task.id,
-            result=f"https://api.housestats.co.uk{url_for('api.get_epc_cert',house_id=house_id)}?task_id={task.id}"
-        )
-
-@bp.route("/get_epc_cert/<string:house_id>")
-def get_epc_cert(house_id):
-    task_id = request.args.get("task_id", None)
-    if task_id is not None:
-        task = get_epc.AsyncResult(task_id)
-        if task.state == "PENDING":
-            return {
-                "status": task.state
-            }
-        else:
-            house_id = task.wait()
-            with current_app.app_context():
-                result = current_app.mongo_db.epc_certs.find_one({"_id": house_id})
-            return {
-                "status": task.state,
-                "result": result
-            }
-    else:
-        with current_app.app_context():
-            result = current_app.mongo_db.epc_certs.find_one({"_id": house_id})
-        if result is not None:
-            return {
-                "status": "COMPLETED",
-                "result": result
-            }
-        else:
-            return {
-                "status": "FAILED"
-            }
 
 
 def get_last_updated():

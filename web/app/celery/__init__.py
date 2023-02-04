@@ -21,5 +21,5 @@ def analyse_task(area: str, area_type: str):
 @celery.task()
 def get_epc(postcode: str, paon: str, saon: str):
     get_epc = GetEPC()
-    get_epc.run(postcode, paon, saon)
-    return (paon + saon + postcode)
+    res = get_epc.run(postcode, paon, saon)
+    return res

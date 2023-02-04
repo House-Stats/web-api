@@ -55,8 +55,11 @@ class GetEPC():
         house = list(filter(lambda x: x[0] == house_id,houses))[0]
         cert_stats = self.get_cert(house[1])
         self._insert_data(cert_stats, house[1], postcode, paon, saon)
-        print("done")
-        return
+        return {
+                "sqr_m": cert_stats[0],
+                "energy_rating": cert_stats[1],
+                "cert_id":  house[1]
+            }
 
     def _insert_data(self, cert_stats: Tuple[int,int], cert_id: str, postcode: str, paon: str, saon: str ):
         epc_doc = self._mongo.epc_certs.find_one({"_id": f"{paon}{saon}{postcode}"})
