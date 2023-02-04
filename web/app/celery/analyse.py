@@ -10,7 +10,7 @@ from app.celery.func_timer import Timer
 from app.celery.loader import Loader
 
 
-class Analyse(celery.Task):
+class Analyse():
     def __init__(self):
         config = Config()
         self._sql_db = psycopg2.connect(f"postgresql://{config.SQL_USER}:{config.SQL_PASSWORD}@{config.SQL_HOST}:5432/house_data")
