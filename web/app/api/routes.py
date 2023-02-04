@@ -118,6 +118,7 @@ def search_houses(postcode):
 
 @bp.route("/find/<string:postcode>/<string:paon>")
 def get_house(postcode, paon):
+    task = get_epc.delay(postcode, paon, "")
     sql_house_query = """SELECT h.houseid, h.type, h.paon, h.saon, h.postcode, p.street, p.town
                     FROM postcodes AS p
                     INNER JOIN houses AS h ON p.postcode = h.postcode AND p.postcode = %s 
@@ -142,7 +143,6 @@ def get_house(postcode, paon):
                 "type": house[1],
                 "sales": sales
             }
-            task = get_epc.delay(postcode, paon, "")
             house_info["epc_cert"] = task.wait()
             return jsonify(house_info)
         else:
@@ -150,6 +150,7 @@ def get_house(postcode, paon):
 
 @bp.route("/find/<string:postcode>/<string:paon>/<string:saon>")
 def get_house_saon(postcode, paon, saon):
+    task = get_epc.delay(postcode, paon, saon)
     sql_house_query = """SELECT h.houseid, h.type, h.paon, h.saon, h.postcode, p.street, p.town
                     FROM postcodes AS p
                     INNER JOIN houses AS h ON p.postcode = h.postcode AND p.postcode = %s 
@@ -174,7 +175,6 @@ def get_house_saon(postcode, paon, saon):
                 "type": house[1],
                 "sales": sales
             }
-            task = get_epc.delay(postcode, paon, saon)
             house_info["epc_cert"] = task.wait()
             return jsonify(house_info)
         else:
