@@ -142,6 +142,8 @@ def get_house(postcode, paon):
                 "type": house[1],
                 "sales": sales
             }
+            task = get_epc.delay(postcode, paon, "")
+            house_info["epc_cert"] = task.wait()
             return jsonify(house_info)
         else:
             return abort(404, "No House Found")
