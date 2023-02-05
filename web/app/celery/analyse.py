@@ -2,7 +2,6 @@ from datetime import timedelta, datetime
 from typing import Dict
 
 from pymongo import MongoClient
-import celery
 import polars as pl
 import psycopg2
 from app.celery.config import Config

@@ -3,9 +3,10 @@ import urllib.parse
 from datetime import datetime
 from typing import List, Tuple
 
-from app.api import bp
-from app.celery import analyse_task, get_epc
+from app.api import bp, search_area_funcs
+from app.celery import analyse_task
 from flask import abort, current_app, jsonify, request, url_for
+from app.api import epc_cert
 
 
 @bp.route("/analyse/<string:area_type>/<string:area>")
@@ -48,7 +49,7 @@ def fetch_results(query_id):
             result = current_app.mongo_db.cache.find_one({"_id": query_id})
         if result is not None:
             return {
-                "status": "COMPLETED",
+                "status": "SUCCESS",
                 "result": result
             }
         else:
@@ -60,37 +61,21 @@ def fetch_results(query_id):
 @bp.route("/search/<string:query>")
 def search_area(query):
     query = urllib.parse.unquote(query).upper()
-    query_filter = request.args.get("filter")
-    if query_filter is not None:
-        if query_filter in ["postcode", "street", "town", "district", "county", "outcode", "area", "sector"]:
-            sql_query = f"""SELECT area, area_type 
-                        FROM areas WHERE substr(area, 1, 50) 
-                        LIKE '{query}%' AND area_type = '{query_filter}'
-                        ORDER BY char_length(area)
-                        LIMIT 10;"""
-        else:
-            return abort(404)
-    else:
-        sql_query = f"""SELECT area, area_type 
-                   FROM areas WHERE substr(area, 1, 50) 
-                   LIKE '{query}%' 
-                   ORDER BY char_length(area)
-                   LIMIT 10;"""
+    query_filter = request.args.get("filter", "")
+
+    sql_query = search_area_funcs.generate_sql_query(query, query_filter=query_filter)
+    if sql_query == "":
+        return abort(404)
+
     with current_app.app_context():
         cur = current_app.sql_db.cursor()
         cur.execute(sql_query)
         results: List[Tuple[str,str]] = cur.fetchall()
+
     if len(results) > 0:
-        SORT_ORDER = {"area": 0, "outcode": 1, "sector": 2, "postcode": 3, "town": 4, "county": 5, "district": 6, "street": 7}
-        return_list = []
-        for area in results:
-            if area[1] not in ["postcode","outcode","sector","area"]:
-                return_list.append((area[0].title(), area[1].title()))
-            else:
-                return_list.append((area[0], area[1].title()))
-        return_list.sort(key=lambda val: SORT_ORDER[val[1].lower()])
+        sorted_res = search_area_funcs.sort_results(results)
         return jsonify(
-            results=return_list,
+            results=sorted_res,
             found=True
         )
     else:
@@ -116,41 +101,13 @@ def search_houses(postcode):
     else:
         return abort(404, "Cannot Find Houses for Postcode")
 
-@bp.route("/find/<string:postcode>/<string:paon>")
-def get_house(postcode, paon):
-    task = get_epc.delay(postcode, paon, "")
-    sql_house_query = """SELECT h.houseid, h.type, h.paon, h.saon, h.postcode, p.street, p.town
-                    FROM postcodes AS p
-                    INNER JOIN houses AS h ON p.postcode = h.postcode AND p.postcode = %s 
-                    WHERE h.paon = %s"""
-    sql_sales_query = """SELECT *
-                    FROM sales
-                    WHERE houseid = %s
-                    ORDER BY date DESC;"""
-    with current_app.app_context():
-        cur = current_app.sql_db.cursor()
-        cur.execute(sql_house_query, (postcode.upper(),paon.upper(),)) # Gets house 
-        house: List[Tuple] = cur.fetchone()
-        if house != []:
-            cur.execute(sql_sales_query, (house[0],)) # gets all sales for the house
-            sales = cur.fetchall()
-            house_info = {
-                "paon": house[2],
-                "saon": house[3],
-                "postcode": house[4],
-                "street": house[5],
-                "town": house[6],
-                "type": house[1],
-                "sales": sales
-            }
-            house_info["epc_cert"] = task.wait()
-            return jsonify(house_info)
-        else:
-            return abort(404, "No House Found")
-
-@bp.route("/find/<string:postcode>/<string:paon>/<string:saon>")
-def get_house_saon(postcode, paon, saon):
-    task = get_epc.delay(postcode, paon, saon)
+@bp.route("/find/<string:postcode>/<path:house>")
+def get_house_saon(postcode, house):
+    try:
+        paon, saon = house.split("/")
+    except ValueError:
+        paon = house
+        saon = ""
     sql_house_query = """SELECT h.houseid, h.type, h.paon, h.saon, h.postcode, p.street, p.town
                     FROM postcodes AS p
                     INNER JOIN houses AS h ON p.postcode = h.postcode AND p.postcode = %s 
@@ -175,7 +132,7 @@ def get_house_saon(postcode, paon, saon):
                 "type": house[1],
                 "sales": sales
             }
-            house_info["epc_cert"] = task.wait()
+            house_info["epc_cert"] = epc_cert.GetEPC().run(postcode, paon, saon)
             return jsonify(house_info)
         else:
             return abort(404, "No House Found")
