@@ -16,4 +16,5 @@ def analyse_task(area: str, area_type: str):
     area_type = area_type.upper()
     aggregator = Analyse()
     aggregator.run(area, area_type)
+    del aggregator
     return area + area_type
