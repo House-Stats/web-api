@@ -14,14 +14,14 @@ def create_app(config_class=Config) -> Flask:
     app.config.from_object(config_class)
     cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-    if not bool(os.environ.get("DEBUG", False)):
-        sentry_sdk.init(
-            dsn="https://0cde96349a0145e485630af0f46c0f45@sentry.housestats.co.uk/4",
-            integrations=[
-                FlaskIntegration(),
-            ],
-            traces_sample_rate=1.0
-        )
+    # if not bool(os.environ.get("DEBUG", False)):
+    #     sentry_sdk.init(
+    #         dsn="https://0cde96349a0145e485630af0f46c0f45@sentry.housestats.co.uk/4",
+    #         integrations=[
+    #             FlaskIntegration(),
+    #         ],
+    #         traces_sample_rate=1.0
+    #     )
 
  
     mongo_db = MongoClient(f"mongodb://{app.config['MONGO_USER']}:{app.config['MONGO_PASSWORD']}@{app.config['MONGO_HOST']}:27017/?authSource=house_data")
