@@ -1,6 +1,6 @@
 import urllib.parse
 
-def generate_sql_query(query: str, query_filter: str = ""):
+def generate_sql_query(query: str, query_filter: str = None):
     if query_filter is not None:
         if query_filter in ["postcode", "street", "town", "district", "county", "outcode", "area", "sector"]:
             sql_query = f"""SELECT area, area_type 

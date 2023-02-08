@@ -61,11 +61,11 @@ def fetch_results(query_id):
 @bp.route("/search/<string:query>")
 def search_area(query):
     query = urllib.parse.unquote(query).upper()
-    query_filter = request.args.get("filter", "")
+    query_filter = request.args.get("filter", None)
 
     sql_query = search_area_funcs.generate_sql_query(query, query_filter=query_filter)
     if sql_query == "":
-        return abort(404)
+        return "Failed to generate query", 500
 
     with current_app.app_context():
         cur = current_app.sql_db.cursor()
