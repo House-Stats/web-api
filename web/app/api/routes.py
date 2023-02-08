@@ -149,11 +149,12 @@ def overview():
             else:
                 data = country.get_overview(current_app)
                 data["_id"] = "OVERVIEW"
-                current_app.mongo_db.insert_one(data)
+                current_app.mongo_db.cache.delete_one({"_id": "OVERVIEW"})
+                current_app.mongo_db.cache.insert_one(data)
         else:
             data = country.get_overview(current_app)
             data["_id"] = "OVERVIEW"
-            current_app.mongo_db.cahce.insert_one(data)
+            current_app.mongo_db.cache.insert_one(data)
         return data
 
 def get_last_updated():
