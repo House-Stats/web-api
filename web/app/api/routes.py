@@ -1,4 +1,3 @@
-import time
 import urllib.parse
 from datetime import datetime
 from typing import List, Tuple
@@ -7,7 +6,7 @@ from app.api import bp, search_area_funcs
 from app.celery import analyse_task
 from flask import abort, current_app, jsonify, request, url_for
 from app.api import epc_cert
-
+from app.api import country
 
 @bp.route("/analyse/<string:area_type>/<string:area>")
 def index(area_type, area):
@@ -137,6 +136,25 @@ def get_house_saon(postcode, house):
         else:
             return abort(404, "No House Found")
 
+@bp.route("/overview")
+def overview():
+    with current_app.app_context():
+        data = current_app.mongo_db.cache.find_one({"_id": "OVERVIEW"})
+        cur = current_app.sql_db.cursor()
+        cur.execute("SELECT data FROM settings WHERE name = 'last_aggregated_cities'")
+        last_update = cur.fetchone()
+        if data is not None:
+            if datetime.fromtimestamp(float(last_update[0])) < data["last_updated"]:
+                return data
+            else:
+                data = country.get_overview(current_app)
+                data["_id"] = "OVERVIEW"
+                current_app.mongo_db.insert_one(data)
+        else:
+            data = country.get_overview(current_app)
+            data["_id"] = "OVERVIEW"
+            current_app.mongo_db.cahce.insert_one(data)
+        return data
 
 def get_last_updated():
     cur = current_app.sql_db.cursor()

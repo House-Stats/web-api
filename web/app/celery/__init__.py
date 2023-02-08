@@ -2,6 +2,7 @@ import os
 
 from celery import Celery
 from app.celery.analyse import Analyse
+
 # Initialize Celery
 celery = Celery(
     'worker', 
