@@ -14,7 +14,7 @@ celery = Celery(
 
 @signals.celeryd_init.connect
 def init_sentry(**_kwargs):
-    if not os.environ["DEBUG"]:
+    if not bool(os.environ.get("DEBUG", False)):
         sentry_sdk.init(
             dsn="https://925f26cce4d34132bb9fcc5e38db1eed@o4504585220980736.ingest.sentry.io/4504649955278848",
             traces_sample_rate=1.0,
