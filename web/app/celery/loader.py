@@ -40,9 +40,9 @@ class Loader():
 
     def _format_df(self, data):
         self._data = pl.DataFrame(data,
-                                    columns=["price","date","type","paon","saon",
-                                             "postcode","street","town","houseid"],
-                                    orient="row")
+                                schema=["price","date","type","paon","saon",
+                                        "postcode","street","town","houseid"],
+                                orient="row")
         self._data = self._data.with_column(
             pl.col('date').apply(lambda x: datetime(*x.timetuple()[:-4])).alias("dt")
         )
@@ -55,7 +55,7 @@ class Loader():
         return self._data
 
     @property
-    def latest_date(self):
+    def latest_date(self) -> datetime | None:
         self._cur.execute("SELECT date FROM sales ORDER BY date DESC LIMIT 1;")
         latest_date = self._cur.fetchone()
         if latest_date is not None:

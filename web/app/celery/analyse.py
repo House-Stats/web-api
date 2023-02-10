@@ -4,9 +4,9 @@ from typing import Dict
 from pymongo import MongoClient
 import polars as pl
 import psycopg2
-from app.celery.config import Config
-from app.celery.func_timer import Timer
-from app.celery.loader import Loader
+from config import Config
+from func_timer import Timer
+from loader import Loader
 
 
 class Analyse():
@@ -28,12 +28,12 @@ class Analyse():
 
         self.timer.start("loader")
         try:
-            loader = Loader(area, area_type, self._cur)
+            self._loader = Loader(area, area_type, self._cur)
         except ValueError as e:
             return e
         self.timer.end("loader")
 
-        self._data = loader.get_data()
+        self._data = self._loader.get_data()
 
         self.timer.start("aggregate")
         self._stats = self.get_all_data()
@@ -76,9 +76,9 @@ class Analyse():
         house_types_means = {}
         for house_type in df:
             average_prices = self._calc_average_price(df[house_type])
-            house_types_means[house_type] = average_prices.to_dict(as_series=False)
+            house_types_means[house_type] = self.pad_df(average_prices).to_dict(as_series=False)
 
-        house_types_means["all"] = self._calc_average_price(self._data).to_dict(as_series=False)
+        house_types_means["all"] = self.pad_df(self._calc_average_price(self._data)).to_dict(as_series=False)
         data = {
             "type": [key for key in sorted(house_types_means)],
             "prices": [house_types_means[key]["price"] for key in sorted(house_types_means)],
@@ -110,9 +110,9 @@ class Analyse():
         monthly_quantity = {}
         for house_type in df:
             volume = self._calc_monthly_qty(df[house_type])
-            monthly_quantity[house_type] = volume.to_dict(as_series=False)
+            monthly_quantity[house_type] = self.pad_df(volume).to_dict(as_series=False)
 
-        monthly_quantity["all"] = self._calc_monthly_qty(self._data).to_dict(as_series=False)
+        monthly_quantity["all"] = self.pad_df(self._calc_monthly_qty(self._data)).to_dict(as_series=False)
 
         data = {
             "type": [key for key in sorted(monthly_quantity)],
@@ -135,9 +135,9 @@ class Analyse():
         monthly_volume = {}
         for house_type in df:
             volume = self._calc_monthly_vol(df[house_type])
-            monthly_volume[house_type] = volume.to_dict(as_series=False)
+            monthly_volume[house_type] = self.pad_df(volume).to_dict(as_series=False)
 
-        monthly_volume["all"] = self._calc_monthly_vol(self._data).to_dict(as_series=False)
+        monthly_volume["all"] = self.pad_df(self._calc_monthly_vol(self._data)).to_dict(as_series=False)
 
         data = {
             "type": [key for key in sorted(monthly_volume)],
@@ -159,8 +159,10 @@ class Analyse():
         data = self._data.partition_by("type", as_dict=True)
         monthly_perc = {}
         for house_type in data:
-            monthly_perc[house_type] = self._calc_ind_perc(data[house_type]).to_dict(as_series=False)
-        monthly_perc["all"] = self._calc_ind_perc(self._data).to_dict(as_series=False)
+            monthly_perc[house_type] = self.pad_df(self._calc_ind_perc(data[house_type])).to_dict(as_series=False)
+
+        monthly_perc["all"] = self.pad_df(self._calc_ind_perc(self._data)).to_dict(as_series=False)
+
         self.timer.end("aggregate_perc")
         return monthly_perc
 
@@ -209,10 +211,13 @@ class Analyse():
         prev_vol = data["monthly_volume"]["volume"][4][-2]
         vol_change = round(100*(current_vol-prev_vol)/prev_vol,2)
 
-        expensive_sale = (self._data
-            .filter(pl.col("date").is_between(current_month, current_month + timedelta(days=31)))
-            .filter(pl.col("price") == pl.col("price").max())
-            )[0,0]
+        try:
+            expensive_sale = (self._data
+                .filter(pl.col("date").is_between(current_month, current_month + timedelta(days=31)))
+                .filter(pl.col("price") == pl.col("price").max())
+                )[0,0]
+        except:
+            expensive_sale = 0
 
         quick_stats = {
             "current_month": current_month,
@@ -238,9 +243,16 @@ class Analyse():
         data["quick_stats"] = self._quick_stats(data)
         return data
 
+    def pad_df(self, df: pl.DataFrame) -> pl.DataFrame | None:
+        latest_date = self._loader.latest_date
+        if latest_date is not None:
+            dates = pl.date_range(datetime(1995,1,1), latest_date, "1mo")
+            dates_df = pl.DataFrame(dates, schema=["date"])
+            df = df.join(dates_df, on="date", how="outer")
+            df = df.fill_null(0)
+            return df
+
 
 if __name__ == "__main__":
     task = Analyse()
-    task.before_start("efnqiwfn")
     task.run("CH2 1", "sector")
-    
