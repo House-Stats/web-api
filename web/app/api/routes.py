@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import List, Tuple
 
 from app.api import bp, search_area_funcs
-from app.celery import analyse_task
+from app.celery import analyse_task, valuation_task
 from flask import abort, current_app, jsonify, request, url_for
 from app.api import epc_cert
 from app.api import country
@@ -158,6 +158,29 @@ def overview():
             data["last_updated"] = datetime.now()
             current_app.mongo_db.cache.insert_one(data)
         return data
+
+@bp.route("/value/calc/<string:houseid>")
+def value_house(houseid: str):
+    task = valuation_task.delay(houseid)
+    return jsonify(
+            status="ok",
+            task_id="/value/get/" + task.id,
+        )
+
+@bp.route("/value/get/<string:job_id>")
+def get_value(job_id: str):
+    if job_id is not None:
+        task = analyse_task.AsyncResult(job_id)
+        if task.state == "PENDING":
+            return {
+                "status": task.state
+            }
+        else:
+            valuations = task.wait()
+            return {
+                "valuations": valuations,
+                "status": "ok"
+            }
 
 def get_last_updated():
     cur = current_app.sql_db.cursor()
