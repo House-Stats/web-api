@@ -17,39 +17,40 @@ class Analyse():
         self._cur = self._sql_db.cursor()
         self._mongo = self._mongo_db.house_data
 
-    def __del__(self):
+    def clean_up(self):
         self._sql_db.close()
         self._mongo_db.close()
 
     def run(self, area: str, area_type: str):
         area = area.upper()
         area_type = area_type.upper()
-        self.timer = Timer()
+        if not self._check_cache(area + area_type):
+            self.timer = Timer()
 
-        self.timer.start("loader")
-        try:
-            self._loader = Loader(area, area_type, self._cur)
-        except ValueError as e:
-            return e
-        self.timer.end("loader")
+            self.timer.start("loader")
+            try:
+                self._loader = Loader(area, area_type, self._cur)
+            except ValueError as e:
+                return e
+            self.timer.end("loader")
 
-        self._data = self._loader.get_data()
+            self._data = self._loader.get_data()
 
-        self.timer.start("aggregate")
-        self._stats = self.get_all_data()
-        self.timer.end("aggregate")
+            self.timer.start("aggregate")
+            self._stats = self.get_all_data()
+            self.timer.end("aggregate")
 
-        timings = self.timer.get_times
+            timings = self.timer.get_times
 
-        return_data = {
-            "_id": area + area_type,
-            "area": area,
-            "area_type": area_type,
-            "last_updated": datetime.now(),
-            "timings": timings,
-            "stats": self._stats
-        }
-        self._cache_results(return_data)
+            return_data = {
+                "_id": area + area_type,
+                "area": area,
+                "area_type": area_type,
+                "last_updated": datetime.now(),
+                "timings": timings,
+                "stats": self._stats
+            }
+            self._cache_results(return_data)
 
     @property
     def stats(self):
@@ -70,6 +71,25 @@ class Analyse():
         else:
             self._mongo.cache.insert_one(return_data)
 
+    def _check_cache(self, id: str) -> bool:
+        data = self._mongo.cache.find_one({"_id": id})
+        if data is not None:
+            last_updated = self.last_updated()
+            if data["last_updated"] < last_updated:
+                return False
+            else:
+                return True
+        else:
+            return False
+
+    def last_updated(self):
+        self._cur.execute("SELECT * FROM settings WHERE name = 'last_updated';")
+        data = self._cur.fetchone()
+        if data is not None:
+            date = datetime.fromtimestamp(float(data[1]))
+            return date
+        else:
+            return datetime.fromtimestamp(0)
     def _get_average_prices(self) -> Dict:
         self.timer.start("aggregate_average")
         df = self._data.partition_by("type", as_dict=True)
@@ -191,8 +211,9 @@ class Analyse():
             ) \
             .filter(pl.col("prev_year").is_not_null())
 
+        magic_number = 10.5 # It works and I dont know why
         df = df.with_columns(
-            (((pl.col("avg_price")-pl.col("prev_year"))/pl.col("avg_price")*100)/12).alias("perc_change")
+            (((pl.col("avg_price")-pl.col("prev_year"))/pl.col("avg_price")*100)/magic_number).alias("perc_change")
         )
         return df
 
@@ -201,15 +222,24 @@ class Analyse():
         current_month = data["average_price"]["dates"][-1]
         current_average = data["average_price"]["prices"][4][-1]
         prev_average = data["average_price"]["prices"][4][-2]
-        average_change = round(100*(current_average-prev_average)/prev_average, 2)
+        try:
+            average_change = round(100*(current_average-prev_average)/prev_average, 2)
+        except ZeroDivisionError:
+            average_change = None
 
         current_qty = data["monthly_qty"]["qty"][4][-1]
         prev_qty = data["monthly_qty"]["qty"][4][-2]
-        qty_change = round(100*(current_qty-prev_qty)/prev_qty,2)
+        try:
+            qty_change = round(100*(current_qty-prev_qty)/prev_qty,2)
+        except ZeroDivisionError:
+            qty_change = None
 
         current_vol =  data["monthly_volume"]["volume"][4][-1]
         prev_vol = data["monthly_volume"]["volume"][4][-2]
-        vol_change = round(100*(current_vol-prev_vol)/prev_vol,2)
+        try:
+            vol_change = round(100*(current_vol-prev_vol)/prev_vol,2)
+        except ZeroDivisionError:
+            vol_change = None
 
         try:
             expensive_sale = (self._data
@@ -250,6 +280,7 @@ class Analyse():
             dates_df = pl.DataFrame(dates, schema=["date"])
             df = df.join(dates_df, on="date", how="outer")
             df = df.fill_null(0)
+            df = df.filter(pl.col("date") < latest_date)
             return df
 
 
