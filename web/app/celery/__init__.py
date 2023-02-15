@@ -46,7 +46,11 @@ def valuation_task(houseid: str):
         perc_changes = valuater.find_monthly_averages(aggs)
         sales = valuater.get_house_sales()
         valuations = valuater.calc_latest_price(sales, perc_changes)
-        return valuations
+        dates = aggs[-1]["monthly_perc"]["all"]["date"]
+        return {
+            "valuations": valuations,
+            "dates": dates
+        }
     else:
         return "No House Found"
 
