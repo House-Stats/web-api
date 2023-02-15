@@ -91,7 +91,7 @@ class Valuation():
         sales = self._cur.fetchall()
         return sales
 
-    def calc_latest_price(self, sales: List[Tuple[int, datetime]], percs: List[float]) -> List[List[int]]:
+    def calc_latest_price(self, sales: List[Tuple[int, datetime]], percs: List[float]) -> List[List[datetime] | List[List[int]]]:
         sales_valuations = []
         for sale in sales:
             sales_date = sale[1]
@@ -105,4 +105,4 @@ class Valuation():
             house_value = list(map(lambda x: round(x,-2), house_value))
             house_value = padding + house_value
             sales_valuations.append(house_value)
-        return sales_valuations
+        return [[i[1] for i in sales],sales_valuations]
