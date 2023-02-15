@@ -7,7 +7,7 @@ def get_overview(current_app: current_app):
     query = [
         {
             '$match': {
-                'area_type': 'COUNTY'
+                'area_type': 'AREA'
             }
         }, {
             '$project': {
