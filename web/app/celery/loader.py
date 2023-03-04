@@ -1,6 +1,6 @@
 from dateutil.relativedelta import relativedelta
 from datetime import datetime, timedelta
-from typing import List
+from typing import List, Tuple
 import polars as pl
 
 
@@ -15,7 +15,7 @@ class Loader():
         else:
             if self.verify_area():
                 data = self.fetch_area_sales()
-                self._format_df(data)
+                self.format_df(data)
 
     def verify_area(self):
         self._cur.execute(f"SELECT postcode FROM postcodes WHERE {self.area_type} = %s LIMIT 1;", (self.area,))
@@ -38,7 +38,7 @@ class Loader():
         else:
             return data
 
-    def _format_df(self, data):
+    def format_df(self, data: List[Tuple]):
         self._data = pl.DataFrame(data,
                                 schema=["price","date","type","paon","saon",
                                         "postcode","street","town","houseid"],
@@ -56,15 +56,15 @@ class Loader():
 
     @property
     def latest_date(self) -> datetime | None:
-        self._cur.execute("SELECT date FROM sales ORDER BY date DESC LIMIT 1;")
+        self._cur.execute("SELECT data FROM settings WHERE name = 'last_updated';")
         latest_date = self._cur.fetchone()
         if latest_date is not None:
-            latest_date = datetime.combine(latest_date[0], datetime.min.time())
+            latest_date = datetime.fromtimestamp(latest_date)
             if latest_date > (datetime.now() - timedelta(days=60)):
                 start = datetime.now().replace(day=1).replace(hour=0,minute=0,second=0, microsecond=0)
                 return start - relativedelta(months=2)
             else:
-                return latest_date[0]
+                return latest_date
 
 if __name__ == "__main__":
     from config import Config
