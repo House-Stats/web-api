@@ -17,24 +17,32 @@ class Analyse():
         self._cur = self._sql_db.cursor()
         self._mongo = self._mongo_db.house_data
 
+    @property
+    def cursor(self):
+        return self._cur
+
     def clean_up(self):
         self._sql_db.close()
         self._mongo_db.close()
 
-    def run(self, area: str, area_type: str):
+    def run(self, area: str, area_type: str, data: pl.DataFrame | None = None):
         area = area.upper()
         area_type = area_type.upper()
         if not self._check_cache(area + area_type):
             self.timer = Timer()
 
-            self.timer.start("loader")
-            try:
-                self._loader = Loader(area, area_type, self._cur)
-            except ValueError as e:
-                return e
-            self.timer.end("loader")
+            if data is None:
+                self.timer.start("loader")
+                try:
+                    self._loader = Loader(area, area_type, self._cur)
+                except ValueError as e:
+                    return e
+                self.timer.end("loader")
 
-            self._data = self._loader.get_data()
+                self._data = self._loader.get_data()
+            else:
+                self._loader = Loader("CH2 1LG", "postcode", self._cur)
+                self._data = data
 
             self.timer.start("aggregate")
             self._stats = self.get_all_data()
@@ -71,8 +79,8 @@ class Analyse():
         else:
             self._mongo.cache.insert_one(return_data)
 
-    def _check_cache(self, id: str) -> bool:
-        data = self._mongo.cache.find_one({"_id": id})
+    def _check_cache(self, area_id: str) -> bool:
+        data = self._mongo.cache.find_one({"_id": area_id})
         if data is not None:
             last_updated = self.last_updated()
             if data["last_updated"] < last_updated:
@@ -90,6 +98,7 @@ class Analyse():
             return date
         else:
             return datetime.fromtimestamp(0)
+
     def _get_average_prices(self) -> Dict:
         self.timer.start("aggregate_average")
         df = self._data.partition_by("type", as_dict=True)
