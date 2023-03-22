@@ -42,6 +42,7 @@ class GetEPC():
         energy_rating = cert_soup.select_one("#main-content > div > div.govuk-grid-column-two-thirds.epc-domestic-sections > div.govuk-body.epc-blue-bottom.printable-area.epc-rating-graph-section > svg > svg.rating-current > text.current-potential-number") \
             .contents[0] \
             .replace("|", "") \
+            .split(" ")[0]
             .strip()
         energy_rating = int(energy_rating)
         
