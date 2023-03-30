@@ -47,6 +47,13 @@ def fetch_results(query_id):
         with current_app.app_context():
             result = current_app.mongo_db.cache.find_one({"_id": query_id})
         if result is not None:
+            try:
+                result["stats"]["monthly_qty"]["type"].remove("all")
+                result["stats"]["monthly_qty"]["qty"].pop(-1)
+                result["stats"]["monthly_volume"]["type"].remove("all")
+                result["stats"]["monthly_volume"]["volume"].pop(-1)
+            except:
+                pass
             return {
                 "status": "SUCCESS",
                 "result": result
