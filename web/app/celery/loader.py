@@ -44,7 +44,7 @@ class Loader():
                                         "postcode","street","town","houseid"],
                                 orient="row")
         self._data = self._data.with_column(
-            pl.col('date').apply(lambda x: datetime(*x.timetuple()[:-4])).alias("dt")
+            pl.col('date').apply(lambda x: datetime(*x.timetuple()[:-4])).alias("dt") # type: ignore
         )
         self._data = self._data \
             .drop("date") \
@@ -57,9 +57,9 @@ class Loader():
     @property
     def latest_date(self) -> datetime | None:
         self._cur.execute("SELECT data FROM settings WHERE name = 'last_updated';")
-        latest_date = self._cur.fetchone()
+        latest_date = self._cur.fetchone()[0]
         if latest_date is not None:
-            latest_date = datetime.fromtimestamp(latest_date)
+            latest_date = datetime.fromtimestamp(float(latest_date))
             if latest_date > (datetime.now() - timedelta(days=60)):
                 start = datetime.now().replace(day=1).replace(hour=0,minute=0,second=0, microsecond=0)
                 return start - relativedelta(months=2)

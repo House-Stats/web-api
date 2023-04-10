@@ -13,7 +13,7 @@ def index(area_type, area):
     with current_app.app_context():
         query_id = area.upper() + area_type.upper()
         result = current_app.mongo_db.cache.find_one({"_id": query_id})
-    if result is None:
+    if result is None or result["last_updated"] < get_last_updated():
         task = analyse_task.delay(area, area_type)
         return jsonify(
             status="ok",
@@ -38,30 +38,10 @@ def fetch_results(query_id):
         else:
             query_id = task.wait()
             with current_app.app_context():
-                result = current_app.mongo_db.cache.find_one({"_id": query_id})
-            return {
-                "status": task.state,
-                "result": result
-            }
+                return load_analysis(query_id, task_state=task.state)
     else:
         with current_app.app_context():
-            result = current_app.mongo_db.cache.find_one({"_id": query_id})
-        if result is not None:
-            try:
-                result["stats"]["monthly_qty"]["type"].remove("all")
-                result["stats"]["monthly_qty"]["qty"].pop(-1)
-                result["stats"]["monthly_volume"]["type"].remove("all")
-                result["stats"]["monthly_volume"]["volume"].pop(-1)
-            except:
-                pass
-            return {
-                "status": "SUCCESS",
-                "result": result
-            }
-        else:
-            return {
-                "status": "FAILED"
-            }
+            return load_analysis(query_id)
 
 
 @bp.route("/search/<string:query>")
@@ -203,3 +183,22 @@ def get_last_updated():
             return datetime.fromtimestamp(float(last_updated[1]))
         else:
             return datetime.fromtimestamp(0)
+
+def load_analysis(query_id, task_state=None):
+    result = current_app.mongo_db.cache.find_one({"_id": query_id})
+    if result["last_updated"] > get_last_updated():
+        try:
+            result["stats"]["monthly_qty"]["type"].remove("all")
+            result["stats"]["monthly_qty"]["qty"].pop(-1)
+            result["stats"]["monthly_volume"]["type"].remove("all")
+            result["stats"]["monthly_volume"]["volume"].pop(-1)
+        except:
+            pass
+        return {
+            "status": task_state if task_state is not None else "SUCCESS",
+            "result": result
+        }
+    else:
+        return {
+            "status": task_state if task_state is not None else "FAILED"
+        }
