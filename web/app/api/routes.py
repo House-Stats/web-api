@@ -121,7 +121,12 @@ def get_house_saon(postcode, house):
             try:
                 house_info["epc_cert"] = epc_cert.GetEPC().run(postcode, paon, saon)
             except:
-                pass
+                house_info["epc_cert"] =  {
+                    "sqr_m": None,
+                    "energy_rating": None,
+                    "cert_id":  None
+                }
+                
             return jsonify(house_info)
         else:
             return abort(404, "No House Found")
