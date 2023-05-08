@@ -1,4 +1,6 @@
 from datetime import timedelta, datetime
+from dateutil.relativedelta import relativedelta
+
 from typing import Dict
 
 from pymongo import MongoClient
@@ -12,7 +14,8 @@ from app.celery.loader import Loader
 class Analyse():
     def __init__(self):
         config = Config()
-        self._sql_db = psycopg2.connect(f"postgresql://{config.SQL_USER}:{config.SQL_PASSWORD}@{config.SQL_HOST}:5432/house_data")
+        self._sql_uri = f"postgresql://{config.SQL_USER}:{config.SQL_PASSWORD}@{config.SQL_HOST}:5432/house_data"
+        self._sql_db = psycopg2.connect(self._sql_uri)
         self._mongo_db = MongoClient(f"mongodb://{config.MONGO_USER}:{config.MONGO_PASSWORD}@{config.MONGO_HOST}:27017/?authSource=house_data")
         self._cur = self._sql_db.cursor()
         self._mongo = self._mongo_db.house_data
@@ -55,10 +58,11 @@ class Analyse():
         self.timer.start("loader")
 
         try:
-            self._loader = Loader(area, area_type, self._cur)
+            self._loader = Loader(area, area_type, self._cur, self._sql_uri)
         except ValueError as e:
             return e
         self._data = self._loader.get_data()
+        del self._loader
 
         self.timer.end("loader")
 
@@ -291,7 +295,7 @@ class Analyse():
         return data
 
     def pad_df(self, df: pl.DataFrame) -> pl.DataFrame | None:
-        latest_date = self._loader.latest_date
+        latest_date = self.latest_date
         if latest_date is not None:
             dates = pl.date_range(datetime(1995,1,1), latest_date, "1mo")
             dates_df = pl.DataFrame(dates, schema=["date"])
@@ -299,6 +303,19 @@ class Analyse():
             df = df.fill_null(0)
             df = df.filter(pl.col("date") < latest_date)
             return df
+
+
+    @property
+    def latest_date(self) -> datetime | None:
+        self._cur.execute("SELECT data FROM settings WHERE name = 'last_updated';")
+        latest_date = self._cur.fetchone()
+        if latest_date is not None:
+            latest_date = datetime.fromtimestamp(float(latest_date[0]))
+            if latest_date > (datetime.now() - timedelta(days=60)):
+                start = datetime.now().replace(day=1).replace(hour=0,minute=0,second=0, microsecond=0)
+                return start - relativedelta(months=1)
+            else:
+                return latest_date
 
 
 if __name__ == "__main__":

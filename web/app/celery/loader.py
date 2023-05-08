@@ -5,13 +5,14 @@ import polars as pl
 
 
 class Loader():
-    def __init__(self, area: str, area_type: str, db_cur) -> None:
+    def __init__(self, area: str, area_type: str, db_cur, sql_uri: str) -> None:
+        self._sql_uri = sql_uri
         self._cur = db_cur
         self.area_type = area_type.lower()
         self.area = area.upper()
         if self.validate_areas():
-            data = self.fetch_area_sales()
-            self.format_df(data)
+            self.fetch_area_sales()
+            self.format_df()
 
     def validate_areas(self) -> bool | None:
         self._areas = ["postcode", "street", "town", "district", "county", "outcode", "area", "sector", ""]
@@ -30,40 +31,25 @@ class Loader():
         else:
             raise ValueError(f"Invalid {self.area_type} entered")
 
-    def fetch_area_sales(self) -> List:
+    def fetch_area_sales(self):
         query = f"""SELECT s.price, s.date, h.type, h.paon, h.saon, h.postcode, p.street, p.town, h.houseid
                 FROM postcodes AS p
-                INNER JOIN houses AS h ON p.postcode = h.postcode AND p.{self.area_type} = %s
+                INNER JOIN houses AS h ON p.postcode = h.postcode AND p.{self.area_type} = '{self.area}'
                 INNER JOIN sales AS s ON h.houseid = s.houseid AND h.type != 'O'
-                WHERE s.ppd_cat = 'A' AND s.date < %s;
+                WHERE s.ppd_cat = 'A' AND s.date < '{self.latest_date}'
                 """
         if self.area == "" and self.area_type == "":
-            query = query.replace("AND p. = %s", "")
-            self._cur.execute(query, (self.latest_date,))
-        else:
-            self._cur.execute(query, (self.area, self.latest_date))
+            query = query.replace("AND p. = ''", "")
+        self._data = pl.read_sql(query, self._sql_uri)
 
-        data = self._cur.fetchall()
-        if data == []:
-            raise ValueError(f"No sales for area {self.area}")
-        else:
-            return data
 
-    def format_df(self, data: List[Tuple]):
-        self._data = pl.DataFrame(data,
-                                schema=["price","date","type","paon","saon",
-                                        "postcode","street","town","houseid"],
-                                orient="row")
-        self._data = self._data.with_column(
+    def format_df(self):
+        self._data = self._data.with_columns([
             pl.col('date').apply(lambda x: datetime(*x.timetuple()[:-4])).alias("dt") # type: ignore
-        )
+        ])
         self._data = self._data \
             .drop("date") \
-            .with_columns(pl.col("dt").alias("date")) \
-            .drop("dt")
-
-    def get_data(self) -> pl.DataFrame:
-        return self._data
+            .rename({"dt":"date"})
 
     @property
     def latest_date(self) -> datetime | None:
@@ -77,11 +63,15 @@ class Loader():
             else:
                 return latest_date
 
+
+    def get_data(self) -> pl.DataFrame:
+        return self._data
+
 if __name__ == "__main__":
     from config import Config
     import psycopg2
 
     config = Config()
-    conn = psycopg2.connect(f"postgresql://{config.SQL_USER}:{config.SQL_PASSWORD}@{config.SQL_HOST}:5432/house_data")
-    lodr = Loader("CH2", "outcode", conn.cursor())
-    print(lodr.latest_date)
+    uri = f"postgresql://{config.SQL_USER}:{config.SQL_PASSWORD}@{config.SQL_HOST}:5432/house_data"
+    conn = psycopg2.connect(uri)
+    lodr = Loader("", "", conn.cursor(), uri)
