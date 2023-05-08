@@ -50,6 +50,7 @@ class Loader():
         self._data = self._data \
             .drop("date") \
             .rename({"dt":"date"})
+        self._data = self._data.select(pl.col('price').cast(pl.Int64))
 
     @property
     def latest_date(self) -> datetime | None:
