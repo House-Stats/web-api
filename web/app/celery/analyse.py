@@ -25,28 +25,15 @@ class Analyse():
         self._sql_db.close()
         self._mongo_db.close()
 
-    def run(self, area: str, area_type: str, data: pl.DataFrame | None = None):
+    def run(self, area: str, area_type: str):
         area = area.upper()
         area_type = area_type.upper()
-        if not self._check_cache(area + area_type):
-            self.timer = Timer()
+        self.timer = Timer()
 
-            if data is None:
-                self.timer.start("loader")
-                try:
-                    self._loader = Loader(area, area_type, self._cur)
-                except ValueError as e:
-                    return e
-                self.timer.end("loader")
-
-                self._data = self._loader.get_data()
-            else:
-                self._loader = Loader("CH2 1LG", "postcode", self._cur)
-                self._data = data
-
-            self.timer.start("aggregate")
-            self._stats = self.get_all_data()
-            self.timer.end("aggregate")
+        if (not self._check_cache(area + area_type) 
+                and not self.load_data(area, area_type)):
+    
+            self.aggregate_data()
 
             timings = self.timer.get_times
 
@@ -59,6 +46,27 @@ class Analyse():
                 "stats": self._stats
             }
             self._cache_results(return_data)
+
+    def load_data(self, area, area_type):
+        if area == "ALL" and area_type == "COUNTRY":
+            area = ""
+            area_type = ""
+
+        self.timer.start("loader")
+
+        try:
+            self._loader = Loader(area, area_type, self._cur)
+        except ValueError as e:
+            return e
+        self._data = self._loader.get_data()
+
+        self.timer.end("loader")
+
+
+    def aggregate_data(self):
+        self.timer.start("aggregate")
+        self._stats = self.get_all_data()
+        self.timer.end("aggregate")
 
     @property
     def stats(self):

@@ -126,7 +126,7 @@ def get_house_saon(postcode, house):
                     "energy_rating": None,
                     "cert_id":  None
                 }
-                
+
             return jsonify(house_info)
         else:
             return abort(404, "No House Found")

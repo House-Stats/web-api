@@ -1,8 +1,5 @@
 from flask import current_app
 
-def check_status(current_app: current_app):
-    pass
-
 def get_overview(current_app: current_app):
     query = [
         {

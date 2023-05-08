@@ -9,13 +9,19 @@ class Loader():
         self._cur = db_cur
         self.area_type = area_type.lower()
         self.area = area.upper()
-        self._areas = ["postcode", "street", "town", "district", "county", "outcode", "area", "sector"]
+        if self.validate_areas():
+            data = self.fetch_area_sales()
+            self.format_df(data)
+
+    def validate_areas(self) -> bool | None:
+        self._areas = ["postcode", "street", "town", "district", "county", "outcode", "area", "sector", ""]
         if self.area_type not in self._areas:
             raise ValueError("Invalid area type")
         else:
-            if self.verify_area():
-                data = self.fetch_area_sales()
-                self.format_df(data)
+            if self.area == "":
+                return True
+            elif self.verify_area():
+                return True
 
     def verify_area(self):
         self._cur.execute(f"SELECT postcode FROM postcodes WHERE {self.area_type} = %s LIMIT 1;", (self.area,))
@@ -31,7 +37,12 @@ class Loader():
                 INNER JOIN sales AS s ON h.houseid = s.houseid AND h.type != 'O'
                 WHERE s.ppd_cat = 'A' AND s.date < %s;
                 """
-        self._cur.execute(query, (self.area, self.latest_date))
+        if self.area == "" and self.area_type == "":
+            query = query.replace("AND p. = %s", "")
+            self._cur.execute(query, (self.latest_date,))
+        else:
+            self._cur.execute(query, (self.area, self.latest_date))
+
         data = self._cur.fetchall()
         if data == []:
             raise ValueError(f"No sales for area {self.area}")

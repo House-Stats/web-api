@@ -32,7 +32,10 @@ def analyse_task(area: str, area_type: str):
     area = area.upper()
     area_type = area_type.upper()
     aggregator = Analyse()
-    aggregator.run(area, area_type)
+    if area == "ALL" and area_type == "COUNTRY":
+        aggregator.run(area, area_type)
+    else:
+        aggregator.run(area, area_type)
     aggregator.clean_up()
     return area + area_type
 
@@ -46,10 +49,9 @@ def valuation_task(houseid: str):
         perc_changes = valuater.find_monthly_averages(aggs)
         sales = valuater.get_house_sales()
         valuations = valuater.calc_latest_price(sales, perc_changes)
-        dates = aggs[-1]["monthly_perc"]["all"]["date"]
+        price_range = valuater.calculate_range(valuations)
         return {
-            "valuations": valuations,
-            "dates": dates
+            "price_range": price_range,
         }
     else:
         return "No House Found"
