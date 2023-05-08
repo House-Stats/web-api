@@ -136,7 +136,7 @@ def overview():
     with current_app.app_context():
         data = load_analysis("OVERVIEW")["result"]
         if data is not None:
-            data2 = current_app.mongo_db.cache.find_one({"area": "ALL", "area_type": "COUNTRY"})
+            data2 = load_analysis("ALLCOUNTRY")["result"]
             cur = current_app.sql_db.cursor()
             cur.execute("SELECT data FROM settings WHERE name = 'last_aggregated_counties'")
             last_update = cur.fetchone()
