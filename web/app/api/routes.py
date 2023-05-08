@@ -134,8 +134,9 @@ def get_house_saon(postcode, house):
 @bp.route("/overview")
 def overview():
     with current_app.app_context():
-        data = load_analysis("OVERVIEW")["result"]
+        data = load_analysis("OVERVIEW")
         if data is not None:
+            data = data["result"]
             data2 = load_analysis("ALLCOUNTRY")["result"]
             cur = current_app.sql_db.cursor()
             cur.execute("SELECT data FROM settings WHERE name = 'last_aggregated_counties'")
