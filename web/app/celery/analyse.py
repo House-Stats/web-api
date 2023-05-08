@@ -288,15 +288,26 @@ class Analyse():
         return quick_stats
 
     def get_all_data(self) -> Dict:
+        average_prices = self._get_average_prices()
+        print("Done average")
+        proportions = self._get_type_proportions()
+        print("Done proportions")
+        quantities =  self._get_monthly_qtys()
+        print("Done quantites")
+        volume = self._get_monthly_volumes()
+        print("Done volume")
+        perc = self._get_percs()
+        print("Done perc")
         data = {
-            "average_price": self._get_average_prices(),
-            "type_proportions": self._get_type_proportions(),
-            "monthly_qty": self._get_monthly_qtys(),
-            "monthly_volume": self._get_monthly_volumes(),
-            "percentage_change": self._get_percs()
+            "average_price": average_prices,
+            "type_proportions": proportions,
+            "monthly_qty": quantities,
+            "monthly_volume": volume,
+            "percentage_change": perc
         }
 
         data["quick_stats"] = self._quick_stats(data)
+        print("Done quick stats")
         return data
 
     def pad_df(self, df: pl.DataFrame) -> pl.DataFrame | None:
