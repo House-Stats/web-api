@@ -134,7 +134,7 @@ def get_house_saon(postcode, house):
 @bp.route("/overview")
 def overview():
     with current_app.app_context():
-        data = current_app.mongo_db.cache.find_one({"_id": "OVERVIEW"})
+        data = load_analysis("OVERVIEW")
         if data is not None:
             data2 = current_app.mongo_db.cache.find_one({"area": "ALL", "area_type": "COUNTRY"})
             cur = current_app.sql_db.cursor()
