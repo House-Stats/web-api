@@ -126,6 +126,7 @@ class Analyse():
             "dates": house_types_means["all"]["date"]
         }
         self.timer.end("aggregate_average")
+        del df
         return data
 
     def _calc_average_price(self, df: pl.DataFrame) -> pl.DataFrame:
@@ -143,6 +144,7 @@ class Analyse():
             .groupby("type").count()
         data = df.to_dict(as_series=False)
         self.timer.end("aggregate_proportions")
+        del df
         return data
 
     def _get_monthly_qtys(self) -> Dict:
@@ -160,6 +162,7 @@ class Analyse():
             "qty": [monthly_quantity[key]["qty"] for key in sorted(monthly_quantity)],
             "dates": monthly_quantity["all"]["date"]
         }
+        del df
         self.timer.end("aggregate_qty")
         return data
 
@@ -185,6 +188,7 @@ class Analyse():
             "volume": [monthly_volume[key]["volume"] for key in sorted(monthly_volume)],
             "dates": monthly_volume["all"]["date"]
         }
+        del df
         self.timer.end("aggregate_vol")
         return data
 
@@ -204,6 +208,7 @@ class Analyse():
 
         monthly_perc["all"] = self.pad_df(self._calc_ind_perc(self._data)).to_dict(as_series=False)
 
+        del data
         self.timer.end("aggregate_perc")
         return monthly_perc
 
