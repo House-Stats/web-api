@@ -135,11 +135,12 @@ def get_house_saon(postcode, house):
 def overview():
     with current_app.app_context():
         data = current_app.mongo_db.cache.find_one({"_id": "OVERVIEW"})
-        cur = current_app.sql_db.cursor()
-        cur.execute("SELECT data FROM settings WHERE name = 'last_aggregated_counties'")
-        last_update = cur.fetchone()
         if data is not None:
-            if datetime.fromtimestamp(float(last_update[0])) < data["last_updated"]:
+            data2 = current_app.mongo_db.cache.find_one({"area": "ALL", "area_type": "COUNTRY"})
+            cur = current_app.sql_db.cursor()
+            cur.execute("SELECT data FROM settings WHERE name = 'last_aggregated_counties'")
+            last_update = cur.fetchone()
+            if datetime.fromtimestamp(float(last_update[0])) < data["last_updated"] and datetime.fromtimestamp(float(last_update[0])) < data2["last_updated"]:
                 return data
             else:
                 data = country.get_overview(current_app)
