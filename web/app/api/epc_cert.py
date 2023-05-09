@@ -37,9 +37,10 @@ class GetEPC():
             .replace("\n", "") \
             .replace("square metres", "") \
             .strip()
+        print(sqr_m)
         sqr_m = int(sqr_m)
 
-        energy_rating = cert_soup.select_one("#main-content > div > div.govuk-grid-column-two-thirds.epc-domestic-sections > div.govuk-body.epc-blue-bottom.printable-area.epc-rating-graph-section > svg > svg.rating-current > text.current-potential-number") \
+        energy_rating = cert_soup.select_one("#epc > svg > svg.rating-current > text") \
             .contents[0] \
             .replace("|", "") \
             .split(" ")[0] \
@@ -94,4 +95,4 @@ class GetEPC():
 
 if __name__ == "__main__":
     cert = GetEPC()
-    cert.run("CH2 1DE", "16", "")
+    print(cert.run("CH64 1RG", "MEADOW VIEW", "2"))
