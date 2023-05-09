@@ -135,8 +135,7 @@ def get_house_saon(postcode, house):
 def overview():
     with current_app.app_context():
         data = load_analysis("OVERVIEW")
-        if data is not None:
-            print(data)
+        if data is not None and data != {"status":"FAILED"}:
             data = data["result"]
             data2 = load_analysis("ALLCOUNTRY")["result"]
             cur = current_app.sql_db.cursor()
