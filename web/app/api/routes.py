@@ -153,6 +153,7 @@ def overview():
             data = country.get_overview(current_app)
             data["_id"] = "OVERVIEW"
             data["last_updated"] = datetime.now()
+            current_app.mongo_db.cache.delete_one({"_id": "OVERVIEW"})
             current_app.mongo_db.cache.insert_one(data)
         return data
 
