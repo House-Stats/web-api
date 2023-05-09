@@ -17,7 +17,7 @@ def get_overview(current_app: current_app):
                 }
             }
         }, {
-            "$filter" : {
+            "$match" : {
                 "3_month_perc": {"$ne": None}
             }
         }, {
