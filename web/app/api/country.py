@@ -29,7 +29,7 @@ def get_overview(current_app: current_app):
         }
     ]
     top_5_towns = current_app.mongo_db.cache.aggregate(query)
-    query[2]["$sort"]["3_month_perc"] = 1
+    query[3]["$sort"]["3_month_perc"] = 1
     bottom_5_towns = current_app.mongo_db.cache.aggregate(query)
     country_data = current_app.mongo_db.cache.find_one({"_id": "ALLCOUNTRY"})
     return_data = country_data["stats"]
