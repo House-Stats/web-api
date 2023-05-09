@@ -193,8 +193,9 @@ def get_last_updated():
 
 def load_analysis(query_id, task_state=None):
     result = current_app.mongo_db.cache.find_one({"_id": query_id})
+    print(result)
     if result is None:
-        return result
+        return None
     if result["last_updated"] > get_last_updated():
         try:
             result["stats"]["monthly_qty"]["type"].remove("all")
