@@ -247,22 +247,22 @@ class Analyse():
     def _quick_stats(self, data) -> Dict[str, float]:
 
         current_month = data["average_price"]["dates"][-1]
-        current_average = data["average_price"]["prices"][4][-1]
-        prev_average = data["average_price"]["prices"][4][-2]
+        current_average = data["average_price"]["prices"][-1][-1]
+        prev_average = data["average_price"]["prices"][-1][-2]
         try:
             average_change = round(100*(current_average-prev_average)/prev_average, 2)
         except ZeroDivisionError:
             average_change = None
 
-        current_qty = data["monthly_qty"]["qty"][4][-1]
-        prev_qty = data["monthly_qty"]["qty"][4][-2]
+        current_qty = data["monthly_qty"]["qty"][-1][-1]
+        prev_qty = data["monthly_qty"]["qty"][-1][-2]
         try:
             qty_change = round(100*(current_qty-prev_qty)/prev_qty,2)
         except ZeroDivisionError:
             qty_change = None
 
-        current_vol =  data["monthly_volume"]["volume"][4][-1]
-        prev_vol = data["monthly_volume"]["volume"][4][-2]
+        current_vol =  data["monthly_volume"]["volume"][-1][-1]
+        prev_vol = data["monthly_volume"]["volume"][-1][-2]
         try:
             vol_change = round(100*(current_vol-prev_vol)/prev_vol,2)
         except ZeroDivisionError:
@@ -334,4 +334,4 @@ class Analyse():
 
 if __name__ == "__main__":
     task = Analyse()
-    task.run("CH64","outcode")
+    task.run("CH2 1LG","postcode")
