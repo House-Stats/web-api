@@ -140,7 +140,9 @@ class Analyse():
         self.timer.start("aggregate_proportions")
         df = self._data \
             .unique(subset=["houseid"]) \
-            .groupby("type").count()
+            .groupby("type") \
+            .count() \
+            .sort("type")
         data = df.to_dict(as_series=False)
         self.timer.end("aggregate_proportions")
         del df
