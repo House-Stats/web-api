@@ -111,15 +111,15 @@ class Analyse():
         else:
             return datetime.fromtimestamp(0)
 
-    def _get_average_prices(self) -> Dict:
+    def _get_average_prices(self, period: str="1mo") -> Dict:
         self.timer.start("aggregate_average")
         df = self._data.partition_by("type", as_dict=True)
         house_types_means = {}
         for house_type in df:
-            average_prices = self._calc_average_price(df[house_type])
-            house_types_means[house_type] = self.pad_df(average_prices).to_dict(as_series=False)
+            average_prices = self._calc_average_price(df[house_type],period)
+            house_types_means[house_type] = self.pad_df(average_prices, period).to_dict(as_series=False)
 
-        house_types_means["all"] = self.pad_df(self._calc_average_price(self._data)).to_dict(as_series=False)
+        house_types_means["all"] = self.pad_df(self._calc_average_price(self._data, period), period).to_dict(as_series=False)
         data = {
             "type": [key for key in sorted(house_types_means)],
             "prices": [house_types_means[key]["price"] for key in sorted(house_types_means)],
@@ -129,17 +129,16 @@ class Analyse():
         del df
         return data
 
-    def _calc_average_price(self, df: pl.DataFrame) -> pl.DataFrame:
+    def _calc_average_price(self, df: pl.DataFrame, period: str) -> pl.DataFrame:
         df = df \
             .sort("date") \
-            .groupby_dynamic("date", every="1mo") \
+            .groupby_dynamic("date", every=period) \
             .agg(pl.col("price").log().mean().exp())
         return df
 
     def _get_type_proportions(self) -> Dict:
         self.timer.start("aggregate_proportions")
-        df = self._data
-        df = df \
+        df = self._data \
             .unique(subset=["houseid"]) \
             .groupby("type").count()
         data = df.to_dict(as_series=False)
@@ -147,15 +146,15 @@ class Analyse():
         del df
         return data
 
-    def _get_monthly_qtys(self) -> Dict:
+    def _get_monthly_qtys(self, period: str="1mo") -> Dict:
         self.timer.start("aggregate_qty")
         df = self._data.partition_by("type", as_dict=True)
         monthly_quantity = {}
         for house_type in df:
-            volume = self._calc_monthly_qty(df[house_type])
-            monthly_quantity[house_type] = self.pad_df(volume).to_dict(as_series=False)
+            volume = self._calc_monthly_qty(df[house_type],period)
+            monthly_quantity[house_type] = self.pad_df(volume, period).to_dict(as_series=False)
 
-        monthly_quantity["all"] = self.pad_df(self._calc_monthly_qty(self._data)).to_dict(as_series=False)
+        monthly_quantity["all"] = self.pad_df(self._calc_monthly_qty(self._data, period), period).to_dict(as_series=False)
 
         data = {
             "type": [key for key in sorted(monthly_quantity)],
@@ -166,22 +165,22 @@ class Analyse():
         self.timer.end("aggregate_qty")
         return data
 
-    def _calc_monthly_qty(self, df: pl.DataFrame) -> pl.DataFrame:
+    def _calc_monthly_qty(self, df: pl.DataFrame, period: str) -> pl.DataFrame:
         volume = df \
             .sort("date") \
-            .groupby_dynamic("date", every="1mo") \
+            .groupby_dynamic("date", every=period) \
             .agg(pl.col("price").count().alias("qty"))
         return volume
 
-    def _get_monthly_volumes(self) -> Dict:
+    def _get_monthly_volumes(self, period: str = "1mo") -> Dict:
         self.timer.start("aggregate_vol")
         df = self._data.partition_by("type", as_dict=True)
         monthly_volume = {}
         for house_type in df:
-            volume = self._calc_monthly_vol(df[house_type])
-            monthly_volume[house_type] = self.pad_df(volume).to_dict(as_series=False)
+            volume = self._calc_monthly_vol(df[house_type],period)
+            monthly_volume[house_type] = self.pad_df(volume, period).to_dict(as_series=False)
 
-        monthly_volume["all"] = self.pad_df(self._calc_monthly_vol(self._data)).to_dict(as_series=False)
+        monthly_volume["all"] = self.pad_df(self._calc_monthly_vol(self._data,period), period).to_dict(as_series=False)
 
         data = {
             "type": [key for key in sorted(monthly_volume)],
@@ -192,10 +191,10 @@ class Analyse():
         self.timer.end("aggregate_vol")
         return data
 
-    def _calc_monthly_vol(self, df: pl.DataFrame) -> pl.DataFrame:
+    def _calc_monthly_vol(self, df: pl.DataFrame, period: str) -> pl.DataFrame:
         volume = df \
             .sort("date") \
-            .groupby_dynamic("date", every="1mo") \
+            .groupby_dynamic("date", every=period) \
             .agg(pl.col("price").sum().alias("volume"))
         return volume
 
@@ -204,9 +203,9 @@ class Analyse():
         data = self._data.partition_by("type", as_dict=True)
         monthly_perc = {}
         for house_type in data:
-            monthly_perc[house_type] = self.pad_df(self._calc_ind_perc(data[house_type])).to_dict(as_series=False)
+            monthly_perc[house_type] = self.pad_df(self._calc_ind_perc(data[house_type]), "1mo").to_dict(as_series=False)
 
-        monthly_perc["all"] = self.pad_df(self._calc_ind_perc(self._data)).to_dict(as_series=False)
+        monthly_perc["all"] = self.pad_df(self._calc_ind_perc(self._data), "1mo").to_dict(as_series=False)
 
         del data
         self.timer.end("aggregate_perc")
@@ -276,7 +275,7 @@ class Analyse():
             expensive_sale = 0
 
         quick_stats = {
-            "current_month": current_month,
+            "current_time": current_month,
             "average_price": current_average,
             "average_change": average_change,
             "sales_qty": current_qty,
@@ -288,38 +287,35 @@ class Analyse():
         return quick_stats
 
     def get_all_data(self) -> Dict:
-        average_prices = self._get_average_prices()
-        print("Done average")
-        proportions = self._get_type_proportions()
-        print("Done proportions")
-        quantities =  self._get_monthly_qtys()
-        print("Done quantites")
-        volume = self._get_monthly_volumes()
-        print("Done volume")
-        perc = self._get_percs()
-        print("Done perc")
-        data = {
-            "average_price": average_prices,
-            "type_proportions": proportions,
-            "monthly_qty": quantities,
-            "monthly_volume": volume,
-            "percentage_change": perc
-        }
+        data_period = {}
+        for i in ["1mo","3mo","6mo","12mo"]:
+            average_prices = self._get_average_prices(period=i)
+            proportions = self._get_type_proportions()
+            quantities =  self._get_monthly_qtys(period=i)
+            volume = self._get_monthly_volumes(period=i)
+            perc = self._get_percs()
+            data = {
+                "average_price": average_prices,
+                "type_proportions": proportions,
+                "monthly_qty": quantities,
+                "monthly_volume": volume,
+                "percentage_change": perc
+            }
 
-        data["quick_stats"] = self._quick_stats(data)
-        print("Done quick stats")
-        return data
+            data["quick_stats"] = self._quick_stats(data)
+            data_period[i] = data
 
-    def pad_df(self, df: pl.DataFrame) -> pl.DataFrame | None:
+        return data_period
+
+    def pad_df(self, df: pl.DataFrame, period: str) -> pl.DataFrame | None:
         latest_date = self.latest_date
         if latest_date is not None:
-            dates = pl.date_range(datetime(1995,1,1), latest_date, "1mo")
+            dates = pl.date_range(datetime(1995,1,1), latest_date, period)
             dates_df = pl.DataFrame(dates, schema=["date"])
             df = df.join(dates_df, on="date", how="outer")
             df = df.fill_null(0)
             df = df.filter(pl.col("date") < latest_date)
             return df
-
 
     @property
     def latest_date(self) -> datetime | None:
@@ -336,4 +332,4 @@ class Analyse():
 
 if __name__ == "__main__":
     task = Analyse()
-    task.run("CH2 1", "sector")
+    task.run("SW6","outcode")
