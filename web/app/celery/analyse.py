@@ -236,7 +236,7 @@ class Analyse():
             ) \
             .filter(pl.col("prev_year").is_not_null())
 
-        magic_number = 10.5 # It works and I dont know why
+        magic_number = 12 # It works and I dont know why
         df = df.with_columns(
             (((pl.col("avg_price")-pl.col("prev_year"))/pl.col("avg_price")*100)/magic_number).alias("perc_change")
         )
@@ -332,4 +332,4 @@ class Analyse():
 
 if __name__ == "__main__":
     task = Analyse()
-    task.run("SW6","outcode")
+    task.run("CH64","outcode")
