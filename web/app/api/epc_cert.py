@@ -37,7 +37,6 @@ class GetEPC():
             .replace("\n", "") \
             .replace("square metres", "") \
             .strip()
-        print(sqr_m)
         sqr_m = int(sqr_m)
 
         energy_rating = cert_soup.select_one("#epc > svg > svg.rating-current > text") \
