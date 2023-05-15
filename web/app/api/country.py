@@ -9,11 +9,9 @@ def get_overview(current_app: current_app):
         }, {
             '$project': {
                 '3_month_perc': {
-                    '$avg': {
                         '$slice': [
-                            '$stats.percentage_change.all.perc_change', -3, 3
+                            '$stats.3mo.percentage_change.all.perc_change', -1, 1
                         ]
-                    }
                 }
             }
         }, {
