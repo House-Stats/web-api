@@ -258,8 +258,11 @@ class Analyse():
         tenancies = {}
         for house_type in data:
             df = self._get_ind_tenancy(data[house_type]) \
-                .to_dict(as_series=False)["date"][0].total_seconds()
-            tenancies[house_type] = df
+                .to_dict(as_series=False)["date"][0]
+            if df is not None:
+                tenancies[house_type] = df.total_seconds()
+            else:
+                tenancies[house_type] = 0
 
         tenancies["all"] = self._get_ind_tenancy(self._data ) \
                 .to_dict(as_series=False)["date"][0].total_seconds()
