@@ -251,6 +251,37 @@ class Analyse():
         )
         return df
 
+    def average_tenancy(self):
+        data = self._data.partition_by("type", as_dict=True)
+        tenancies = {}
+        for house_type in data:
+            tenancies[house_type] = data[house_type] \
+                .groupby("houseid") \
+                .apply(self._get_tenancy) \
+                .select(pl.col("tenancy").mean()) \
+                .to_dict(as_series=False)["tenancy"][0].total_seconds()
+        tenancies["all"] = self._data \
+                .groupby("houseid") \
+                .apply(self._get_tenancy) \
+                .select(pl.col("tenancy").mean()) \
+                .to_dict(as_series=False)["tenancy"][0].total_seconds()
+        return tenancies
+
+    def _get_tenancy(self, df: pl.DataFrame) -> pl.DataFrame:
+        df = df \
+            .sort("date") \
+            .with_columns([
+                pl.col("date").shift().alias("prev_sale")
+            ]) \
+            .filter(pl.col("prev_sale").is_not_null())
+
+        df = df \
+            .with_columns([
+                (pl.col("date")-pl.col("prev_sale")).alias("tenancy")
+            ])
+
+        return df
+
     def _quick_stats(self, data) -> Dict[str, float]:
 
         current_month = data["average_price"]["dates"][-1]
@@ -303,12 +334,14 @@ class Analyse():
             quantities =  self._get_monthly_qtys(period=i)
             volume = self._get_monthly_volumes(period=i)
             perc = self._get_percs(period=i)
+            tenancy = self.average_tenancy()
             data = {
                 "average_price": average_prices,
                 "type_proportions": proportions,
                 "monthly_qty": quantities,
                 "monthly_volume": volume,
-                "percentage_change": perc
+                "percentage_change": perc,
+                "average_tenancy": tenancy
             }
 
             data["quick_stats"] = self._quick_stats(data)
@@ -342,3 +375,4 @@ class Analyse():
 if __name__ == "__main__":
     task = Analyse()
     task.run("CH2","outcode")
+
