@@ -48,9 +48,7 @@ class Analyse():
                 "timings": timings,
                 "stats": self._stats
             }
-            import pprint
-            pp = pprint.PrettyPrinter(indent=4)
-            pp.pprint(timings)
+
             self._cache_results(return_data)
 
     def load_data(self, area, area_type):
