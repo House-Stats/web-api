@@ -6,9 +6,9 @@ from typing import Dict
 from pymongo import MongoClient
 import polars as pl
 import psycopg2
-from app.celery.config import Config
-from app.celery.func_timer import Timer
-from app.celery.loader import Loader
+from config import Config
+from func_timer import Timer
+from loader import Loader
 
 
 class Analyse():
@@ -200,47 +200,54 @@ class Analyse():
             .agg(pl.col("price").sum().alias("volume"))
         return volume
 
-    def _get_percs(self) -> Dict:
+    def _get_percs(self, period: str = "1mo") -> Dict:
         self.timer.start("aggregate_perc")
         data = self._data.partition_by("type", as_dict=True)
         monthly_perc = {}
         for house_type in data:
-            monthly_perc[house_type] = self.pad_df(self._calc_ind_perc(data[house_type]), "1mo").to_dict(as_series=False)
+            monthly_perc[house_type] = self.pad_df(self._calc_ind_perc(data[house_type], period), period).to_dict(as_series=False)
 
-        monthly_perc["all"] = self.pad_df(self._calc_ind_perc(self._data), "1mo").to_dict(as_series=False)
+        monthly_perc["all"] = self.pad_df(self._calc_ind_perc(self._data, period), period).to_dict(as_series=False)
 
         del data
         self.timer.end("aggregate_perc")
         return monthly_perc
 
-    def _calc_ind_perc(self, df: pl.DataFrame) -> pl.DataFrame:
+    def _calc_ind_perc(self, df: pl.DataFrame, period: str) -> pl.DataFrame:
         df = df.sort("date") \
-            .groupby_dynamic("date", every="1mo") \
+            .groupby_dynamic("date", every=period) \
             .agg(pl.col("price").log().mean().exp().alias("avg_price"))
 
         df = df.with_columns([
-            pl.col("date").dt.month().alias("month"),
-            pl.col("date").dt.year().alias("year")
+            pl.col("date").dt.round(period).alias("period"),
         ])
 
+        df = self._calc_monthly_perc(df, period)
         df = df \
-            .groupby("month") \
-            .apply(self._calc_monthly_perc) \
-            .drop(["year", "month", "prev_year", "avg_price"]) \
+            .drop(["prev_period", "avg_price","period"]) \
             .sort("date")
         return df
 
-    def _calc_monthly_perc(self, df: pl.DataFrame) -> pl.DataFrame:
+    def _calc_monthly_perc(self, df: pl.DataFrame, period) -> pl.DataFrame:
         df = df \
             .sort("date") \
             .with_columns(
-                pl.col("avg_price").shift().alias("prev_year")
+                pl.col("avg_price").shift().alias("prev_period")
             ) \
-            .filter(pl.col("prev_year").is_not_null())
+            .filter(pl.col("prev_period").is_not_null())
+        
+        magic_numbers = {
+            "1mo": 12,
+            "3mo": 4,
+            "6mo": 2,
+            "12mo": 1
+        } # It works and I dont know why
 
-        magic_number = 12 # It works and I dont know why
         df = df.with_columns(
-            (((pl.col("avg_price")-pl.col("prev_year"))/pl.col("avg_price")*100)/magic_number).alias("perc_change")
+            (((pl.col("avg_price")-pl.col("prev_period"))
+                /pl.col("avg_price")
+                    *100)
+                        /magic_numbers[period]).alias("perc_change")
         )
         return df
 
@@ -295,7 +302,7 @@ class Analyse():
             proportions = self._get_type_proportions()
             quantities =  self._get_monthly_qtys(period=i)
             volume = self._get_monthly_volumes(period=i)
-            perc = self._get_percs()
+            perc = self._get_percs(period=i)
             data = {
                 "average_price": average_prices,
                 "type_proportions": proportions,
@@ -334,4 +341,4 @@ class Analyse():
 
 if __name__ == "__main__":
     task = Analyse()
-    task.run("CH2 1LG","postcode")
+    task.run("CH2","outcode")
