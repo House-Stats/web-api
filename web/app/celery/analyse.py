@@ -48,6 +48,9 @@ class Analyse():
                 "timings": timings,
                 "stats": self._stats
             }
+            import pprint
+            pp = pprint.PrettyPrinter(indent=4)
+            pp.pprint(timings)
             self._cache_results(return_data)
 
     def load_data(self, area, area_type):
@@ -222,13 +225,13 @@ class Analyse():
             pl.col("date").dt.round(period).alias("period"),
         ])
 
-        df = self._calc_monthly_perc(df, period)
+        df = self._calc_period_perc(df, period)
         df = df \
             .drop(["prev_period", "avg_price","period"]) \
             .sort("date")
         return df
 
-    def _calc_monthly_perc(self, df: pl.DataFrame, period) -> pl.DataFrame:
+    def _calc_period_perc(self, df: pl.DataFrame, period) -> pl.DataFrame:
         df = df \
             .sort("date") \
             .with_columns(
@@ -252,34 +255,32 @@ class Analyse():
         return df
 
     def average_tenancy(self):
+        self.timer.start("aggregate_tenancy")
         data = self._data.partition_by("type", as_dict=True)
         tenancies = {}
         for house_type in data:
-            tenancies[house_type] = data[house_type] \
-                .groupby("houseid") \
-                .apply(self._get_tenancy) \
-                .select(pl.col("tenancy").mean()) \
-                .to_dict(as_series=False)["tenancy"][0].total_seconds()
-        tenancies["all"] = self._data \
-                .groupby("houseid") \
-                .apply(self._get_tenancy) \
-                .select(pl.col("tenancy").mean()) \
-                .to_dict(as_series=False)["tenancy"][0].total_seconds()
+            df = self._get_ind_tenancy(data[house_type]) \
+                .to_dict(as_series=False)["date"][0].total_seconds()
+            tenancies[house_type] = df
+
+        tenancies["all"] = self._get_ind_tenancy(self._data ) \
+                .to_dict(as_series=False)["date"][0].total_seconds()
+
+        self.timer.end("aggregate_tenancy")
         return tenancies
 
-    def _get_tenancy(self, df: pl.DataFrame) -> pl.DataFrame:
-        df = df \
+    def _get_ind_tenancy(self, df: pl.DataFrame) -> pl.DataFrame:
+        df = df\
             .sort("date") \
-            .with_columns([
-                pl.col("date").shift().alias("prev_sale")
+            .groupby("houseid", maintain_order=True) \
+            .agg([
+                (pl.col("date") - pl.col("date").shift()),
             ]) \
-            .filter(pl.col("prev_sale").is_not_null())
+            .explode("date")
 
         df = df \
-            .with_columns([
-                (pl.col("date")-pl.col("prev_sale")).alias("tenancy")
-            ])
-
+            .filter(pl.col("date").is_not_null()) \
+            .select(pl.col("date").mean())
         return df
 
     def _quick_stats(self, data) -> Dict[str, float]:
@@ -327,14 +328,14 @@ class Analyse():
         return quick_stats
 
     def get_all_data(self) -> Dict:
-        data_period = {}
+        data_period = {}            
+        tenancy = self.average_tenancy()
+        proportions = self._get_type_proportions()
         for i in ["1mo","3mo","6mo","12mo"]:
             average_prices = self._get_average_prices(period=i)
-            proportions = self._get_type_proportions()
             quantities =  self._get_monthly_qtys(period=i)
             volume = self._get_monthly_volumes(period=i)
             perc = self._get_percs(period=i)
-            tenancy = self.average_tenancy()
             data = {
                 "average_price": average_prices,
                 "type_proportions": proportions,
