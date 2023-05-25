@@ -1,4 +1,3 @@
-import os
 
 from celery import Celery, signals, group
 from celery.result import allow_join_result
@@ -8,20 +7,21 @@ from sentry_sdk.integrations.celery import CeleryIntegration
 from app.celery.valuation import Valuation
 import time
 from typing import List, Tuple
+from app.celery.config import manage_sensitive
 
 # Initialize Celery
 celery = Celery(
     'worker', 
-    broker= os.environ.get("CELERY_BROKER_URL"),
-    backend=os.environ.get("CELERY_RESULT_BACKEND")
+    broker = manage_sensitive("CELERY_BROKER_URL"),
+    backend = manage_sensitive("CELERY_RESULT_BACKEND")
 )
 
 @signals.celeryd_init.connect
 def init_sentry(**_kwargs):
-    if not bool(os.environ.get("DEBUG", False)):
+    if not bool(manage_sensitive("DEBUG", default="False")):
         sentry_sdk.init(
-            dsn="https://925f26cce4d34132bb9fcc5e38db1eed@o4504585220980736.ingest.sentry.io/4504649955278848",
-            traces_sample_rate=1.0,
+            dsn = manage_sensitive("SENTRY_URI"),
+            traces_sample_rate = 1.0,
             integrations=[
                 CeleryIntegration(),
             ]
