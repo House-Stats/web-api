@@ -14,6 +14,7 @@ services:
       MONGO_PASSWORD:
       CELERY_BROKER_URL:
       CELERY_RESULT_BACKEND:
+      SECRET_KEY:
       DEBUG: True
       PYTHONUNBUFFERED: "1"
     ports:
@@ -38,6 +39,7 @@ services:
       MONGO_PASSWORD:
       CELERY_BROKER_URL:
       CELERY_RESULT_BACKEND:
+      SECRET_KEY:
       PYTHONUNBUFFERED: "1"
     networks:
       - net

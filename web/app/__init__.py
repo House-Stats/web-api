@@ -11,10 +11,11 @@ from sentry_sdk.integrations.flask import FlaskIntegration
 
 def create_app(config_class=Config) -> Flask:
     app = Flask(__name__)
-    app.config.from_object(config_class)
+    config_object = config_class()
+    app.config.from_object(config_object)
     cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-    if not bool(os.environ.get("DEBUG", False)):
+    if not bool(config_object.manage_sensitive("DEBUG", "False")):
         sentry_sdk.init(
             dsn="https://463e69188a7e46fca4408d5f23284fe9@o4504585220980736.ingest.sentry.io/4504649931489280",
             integrations=[
