@@ -20,7 +20,7 @@ celery = Celery(
 def init_sentry(**_kwargs):
     if not bool(manage_sensitive("DEBUG", default="False")):
         sentry_sdk.init(
-            dsn = manage_sensitive("SENTRY_URI"),
+            dsn ="https://463e69188a7e46fca4408d5f23284fe9@o4504585220980736.ingest.sentry.io/4504649931489280",
             traces_sample_rate = 1.0,
             integrations=[
                 CeleryIntegration(),
