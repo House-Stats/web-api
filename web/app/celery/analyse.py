@@ -6,9 +6,9 @@ from typing import Dict
 from pymongo import MongoClient
 import polars as pl
 import psycopg2
-from config import Config
-from func_timer import Timer
-from loader import Loader
+from app.celery.config import Config
+from app.celery.func_timer import Timer
+from app.celery.loader import Loader
 
 
 class Analyse():
