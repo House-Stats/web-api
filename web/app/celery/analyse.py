@@ -260,7 +260,10 @@ class Analyse():
             df = self._get_ind_tenancy(data[house_type]) \
                 .to_dict(as_series=False)["date"][0]
             if df is not None:
-                tenancies[house_type] = df.total_seconds()
+                try:
+                    tenancies[house_type] = df.total_seconds()
+                except AttributeError:
+                    tenancies[house_type] = 0
             else:
                 tenancies[house_type] = 0
 
