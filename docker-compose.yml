@@ -10,16 +10,15 @@ services:
       DBNAME: "house_data"
       DEBUG: "True"
       PYTHONUNBUFFERED: "1"
-    secrets:
-      - POSTGRES_USER
-      - POSTGRES_PASSWORD
-      - POSTGRES_HOST
-      - MONGO_HOST
-      - MONGO_USERNAME
-      - MONGO_PASSWORD
-      - CELERY_BROKER_URL
-      - CELERY_RESULT_BACKEND
-      - SECRET_KEY
+      POSTGRES_USER:
+      POSTGRES_PASSWORD:
+      POSTGRES_HOST:
+      MONGO_HOST:
+      MONGO_USERNAME:
+      MONGO_PASSWORD:
+      CELERY_BROKER_URL:
+      CELERY_RESULT_BACKEND:
+      SECRET_KEY:
     ports:
       - "10000:8000"
     networks:
@@ -36,16 +35,15 @@ services:
     environment:
       DBNAME: "house_data"
       PYTHONUNBUFFERED: "1"
-    secrets:
-      - POSTGRES_USER
-      - POSTGRES_PASSWORD
-      - POSTGRES_HOST
-      - MONGO_HOST
-      - MONGO_USERNAME
-      - MONGO_PASSWORD
-      - CELERY_BROKER_URL
-      - CELERY_RESULT_BACKEND
-      - SECRET_KEY
+      POSTGRES_USER:
+      POSTGRES_PASSWORD:
+      POSTGRES_HOST:
+      MONGO_HOST:
+      MONGO_USERNAME:
+      MONGO_PASSWORD:
+      CELERY_BROKER_URL:
+      CELERY_RESULT_BACKEND:
+      SECRET_KEY:
     networks:
       - net
     depends_on:
@@ -58,11 +56,8 @@ services:
       - "15672:15672"
       - "5672:5672"
     environment:
-      RABBITMQ_DEFAULT_USER_FILE: /run/secrets/RABBITMQ_DEFAULT_USER
-      RABBITMQ_DEFAULT_PASS_FILE: /run/secrets/RABBITMQ_DEFAULT_PASS
-    secrets:
-      - RABBITMQ_DEFAULT_USER
-      - RABBITMQ_DEFAULT_PASS
+      RABBITMQ_DEFAULT_USER:
+      RABBITMQ_DEFAULT_PASS:
     networks:
       - net
 
@@ -82,27 +77,3 @@ volumes:
 
 networks:
   net:
-
-secrets:
-  POSTGRES_USER:
-    external: true
-  POSTGRES_PASSWORD:
-    external: true
-  POSTGRES_HOST:
-    external: true
-  MONGO_HOST:
-    external: true
-  MONGO_USERNAME:
-    external: true
-  MONGO_PASSWORD:
-    external: true
-  CELERY_BROKER_URL:
-    external: true
-  CELERY_RESULT_BACKEND:
-    external: true
-  SECRET_KEY:
-    external: true
-  RABBITMQ_DEFAULT_USER:
-    external: true
-  RABBITMQ_DEFAULT_PASS:
-    external: true
