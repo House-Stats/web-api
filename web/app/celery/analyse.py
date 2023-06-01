@@ -6,9 +6,9 @@ from typing import Dict
 from pymongo import MongoClient
 import polars as pl
 import psycopg2
-from app.celery.config import Config
-from app.celery.func_timer import Timer
-from app.celery.loader import Loader
+from config import Config
+from func_timer import Timer
+from loader import Loader
 
 
 class Analyse():
@@ -369,12 +369,11 @@ class Analyse():
             latest_date = datetime.fromtimestamp(float(latest_date[0]))
             if latest_date > (datetime.now() - timedelta(days=60)):
                 start = datetime.now().replace(day=1).replace(hour=0,minute=0,second=0, microsecond=0)
-                return start - relativedelta(months=1)
+                return start - relativedelta(months=2)
             else:
                 return latest_date
 
 
 if __name__ == "__main__":
     task = Analyse()
-    task.run("CH2","outcode")
-
+    task.run("CH2 1","SECTOR")
