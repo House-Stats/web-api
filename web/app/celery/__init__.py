@@ -11,9 +11,13 @@ from app.celery.config import manage_sensitive
 
 # Initialize Celery
 celery = Celery(
-    'worker', 
+    'worker',
     broker = manage_sensitive("CELERY_BROKER_URL"),
-    backend = manage_sensitive("CELERY_RESULT_BACKEND")
+    backend = manage_sensitive("CELERY_RESULT_BACKEND"),
+    task_ingnore_result= True,
+    task_acks_late = True,
+    worker_prefetch_multiplier= 1,
+
 )
 
 @signals.celeryd_init.connect
