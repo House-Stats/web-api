@@ -266,10 +266,11 @@ class Analyse():
                     tenancies[house_type] = 0
             else:
                 tenancies[house_type] = 0
-
-        tenancies["all"] = self._get_ind_tenancy(self._data ) \
-                .to_dict(as_series=False)["date"][0].total_seconds()
-
+        try:
+            tenancies["all"] = self._get_ind_tenancy(self._data ) \
+                    .to_dict(as_series=False)["date"][0].total_seconds()
+        except AttributeError:
+            tenancies["all"] = 0
         self.timer.end("aggregate_tenancy")
         return tenancies
 
@@ -379,4 +380,5 @@ class Analyse():
 
 if __name__ == "__main__":
     task = Analyse()
-    task.run("CH2 1","SECTOR")
+    print(task.latest_date)
+    # task.run("CH2 1","SECTOR")
