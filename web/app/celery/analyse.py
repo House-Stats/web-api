@@ -5,6 +5,7 @@ from typing import Dict
 
 from pymongo import MongoClient
 import polars as pl
+from polars import exceptions as pl_ex
 import psycopg2
 from app.celery.config import Config
 from app.celery.func_timer import Timer
@@ -360,10 +361,13 @@ class Analyse():
         if latest_date is not None:
             dates = pl.date_range(datetime(1995,1,1), latest_date, period)
             dates_df = pl.DataFrame(dates, schema=["date"])
-            df = df.join(dates_df, on="date", how="outer")
-            df = df.fill_null(0)
-            df = df.filter(pl.col("date") < latest_date)
-            return df
+            try:
+                df = df.join(dates_df, on="date", how="outer")
+                df = df.fill_null(0)
+                df = df.filter(pl.col("date") < latest_date)
+                return df
+            except pl_ex.ComputeError:
+                return df
 
     @property
     def latest_date(self) -> datetime | None:
@@ -380,5 +384,5 @@ class Analyse():
 
 if __name__ == "__main__":
     task = Analyse()
-    print(task.latest_date)
-    # task.run("CH2 1","SECTOR")
+    # print(task.latest_date)
+    task.run("CH99","OUTCODE")
