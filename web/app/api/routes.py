@@ -2,35 +2,37 @@ import urllib.parse
 from datetime import datetime
 from typing import List, Tuple
 
-from app.api import bp, search_area_funcs
-from app.celery import analyse_task, valuation_task
+import celery.states as states
+from app.api import bp, country, epc_cert, search_area_funcs
+from celery.result import AsyncResult
 from flask import abort, current_app, jsonify, request, url_for
-from app.api import epc_cert
-from app.api import country
+
 
 @bp.route("/analyse/<string:area_type>/<string:area>")
 def index(area_type, area):
     with current_app.app_context():
         query_id = area.upper() + area_type.upper()
         result = current_app.mongo_db.cache.find_one({"_id": query_id})
-    if result is None or result["last_updated"] < get_last_updated():
-        task = analyse_task.delay(area, area_type)
-        return jsonify(
-            status="ok",
-            task_id=task.id,
-            result=f"https://api.housestats.co.uk{url_for('api.fetch_results',query_id=query_id)}?task_id={task.id}"
-        )
-    else:
-        return jsonify(
-            status="ok",
-            result=f"https://api.housestats.co.uk{url_for('api.fetch_results',query_id=query_id)}"
-        )
+
+        if result is None or result["last_updated"] < get_last_updated():
+            task = current_app.celery.send_task("worker.analyse", args=[area,area_type])
+            return jsonify(
+                status="ok",
+                task_id=task.id,
+                result=f"https://api.housestats.co.uk{url_for('api.fetch_results',query_id=query_id)}?task_id={task.id}"
+            )
+        else:
+            return jsonify(
+                status="ok",
+                result=f"https://api.housestats.co.uk{url_for('api.fetch_results',query_id=query_id)}"
+            )
 
 @bp.route("/get/<string:query_id>")
-def fetch_results(query_id):
+def fetch_results(query_id: str):
     task_id = request.args.get("task_id", None)
     if task_id is not None:
-        task = analyse_task.AsyncResult(task_id)
+        with current_app.app_context():
+            task = current_app.celery.AsyncResult(task_id)
         if task.state == "PENDING":
             return {
                 "status": task.state
@@ -137,11 +139,8 @@ def overview():
         data = load_analysis("OVERVIEW")
         if data is not None and data != {"status":"FAILED"}:
             data = data["result"]
-            data2 = load_analysis("ALLCOUNTRY")["result"]
-            cur = current_app.sql_db.cursor()
-            cur.execute("SELECT data FROM settings WHERE name = 'last_aggregated_counties'")
-            last_update = cur.fetchone()
-            if datetime.fromtimestamp(float(last_update[0])) < data["last_updated"] and datetime.fromtimestamp(float(last_update[0])) < data2["last_updated"]:
+            data2 = load_analysis("ALLCOUNTRY")
+            if data2 is not None:
                 return data
 
         data = country.get_overview(current_app)
@@ -153,7 +152,8 @@ def overview():
 
 @bp.route("/value/calc/<string:houseid>")
 def value_house(houseid: str):
-    task = valuation_task.delay(houseid)
+    with current_app.app_context():
+        task = current_app.celery.send_task("worker.valuation", args=[houseid])
     return jsonify(
             status="ok",
             task_id="/value/get/" + task.id,
@@ -162,7 +162,8 @@ def value_house(houseid: str):
 @bp.route("/value/get/<string:job_id>")
 def get_value(job_id: str):
     if job_id is not None:
-        task = analyse_task.AsyncResult(job_id)
+        with current_app.app_context():
+            task = current_app.celery.AsyncResult(job_id)
         if task.state == "PENDING":
             return {
                 "status": task.state
@@ -186,7 +187,7 @@ def get_last_updated():
         else:
             return datetime.fromtimestamp(0)
 
-def load_analysis(query_id, task_state=None):
+def load_analysis(query_id: str, task_state=None):
     result = current_app.mongo_db.cache.find_one({"_id": query_id})
     if result is None:
         return None

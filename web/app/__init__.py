@@ -7,12 +7,16 @@ from flask import Flask, current_app
 from flask_cors import CORS
 from pymongo import MongoClient
 from sentry_sdk.integrations.flask import FlaskIntegration
-
+from celery import Celery  
 
 def create_app(config_class=Config) -> Flask:
     app = Flask(__name__)
     config_object = config_class()
     app.config.from_object(config_object)
+    celery = Celery('worker',
+                    broker = config_object.CELERY_BROKER_URL,
+                    backend = config_object.CELERY_RESULT_BACKEND
+    )
     cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
     if not bool(config_object.manage_sensitive("DEBUG", "False")):
@@ -30,6 +34,7 @@ def create_app(config_class=Config) -> Flask:
     with app.app_context():
         current_app.mongo_db = mongo_db.house_data
         current_app.sql_db = sql_db
+        current_app.celery = celery
         
 
     from app.api import bp as api_bp

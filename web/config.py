@@ -14,6 +14,8 @@ class Config():
         self.MONGO_HOST = self.manage_sensitive("MONGO_HOST")
         self.MONGO_USER = self.manage_sensitive("MONGO_USERNAME")
         self.MONGO_PASSWORD = self.manage_sensitive("MONGO_PASSWORD")
+        self.CELERY_BROKER_URL = self.manage_sensitive("CELERY_BROKER_URL")
+        self.CELERY_RESULT_BACKEND = self.manage_sensitive("CELERY_RESULT_BACKEND")
 
     def manage_sensitive(self, name, default: str | None = None) -> str | None:
         v1 = os.environ.get(name)
