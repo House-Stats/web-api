@@ -19,12 +19,12 @@ def index(area_type, area):
             return jsonify(
                 status="ok",
                 task_id=task.id,
-                result=f"https://dashboard.housestats.co.uk{url_for('api.fetch_results',query_id=query_id)}?task_id={task.id}"
+                result=f"https://api.housestats.co.uk{url_for('api.fetch_results',query_id=query_id)}?task_id={task.id}"
             )
         else:
             return jsonify(
                 status="ok",
-                result=f"https://dashboard.housestats.co.uk{url_for('api.fetch_results',query_id=query_id)}"
+                result=f"https://api.housestats.co.uk{url_for('api.fetch_results',query_id=query_id)}"
             )
 
 @bp.route("/get/<string:query_id>")
