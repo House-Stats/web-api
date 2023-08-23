@@ -4,7 +4,7 @@ def generate_sql_query(query: str, query_filter: str = None):
     if query_filter is not None:
         if query_filter in ["postcode", "street", "town", "district", "county", "outcode", "area", "sector"]:
             sql_query = f"""SELECT area, area_type 
-                        FROM areas WHERE substr(area, 1, 50) 
+                        FROM areas WHERE substr(area, 1, 70) 
                         LIKE '{query}%' AND area_type = '{query_filter}'
                         ORDER BY char_length(area)
                         LIMIT 10;"""
@@ -12,7 +12,7 @@ def generate_sql_query(query: str, query_filter: str = None):
             return ""
     else:
         sql_query = f"""SELECT area, area_type 
-                   FROM areas WHERE substr(area, 1, 50) 
+                   FROM areas WHERE substr(area, 1, 70) 
                    LIKE '{query}%' 
                    ORDER BY char_length(area)
                    LIMIT 10;"""
